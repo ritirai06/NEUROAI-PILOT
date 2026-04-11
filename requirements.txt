@@ -1,0 +1,30 @@
+# Web framework
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+
+# HTTP client
+httpx==0.28.1
+
+# Data validation
+pydantic==2.12.5
+pydantic-core==2.41.5
+
+# Browser automation
+playwright==1.52.0
+
+# OS / System
+psutil==7.0.0
+pywin32==311; sys_platform == "win32"
+
+# Voice
+pyttsx3==2.90
+sounddevice==0.5.1
+soundfile==0.12.1
+SpeechRecognition==3.10.4
+
+# Utilities
+python-dotenv==1.1.0
+python-multipart==0.0.20
+
+# Temporal workflow engine
+temporalio==1.7.1

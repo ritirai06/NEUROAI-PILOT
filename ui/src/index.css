@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cyan:    #00d4ff;
+  --blue:    #0066ff;
+  --glow:    #00aaff;
+  --bg:      #020812;
+  --panel:   #040d1a;
+  --border:  #0a2040;
+  --success: #00ff88;
+  --error:   #ff3366;
+  --warn:    #ffaa00;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: #a0c8e8;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #0a2040; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #00d4ff44; }
+
+/* ── Glass panels ── */
+.glass {
+  background: rgba(4, 13, 26, 0.88);
+  backdrop-filter: blur(20px);
+  border: 1px solid #0a2040;
+}
+.glass-bright {
+  background: rgba(0, 100, 200, 0.07);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+}
+
+/* ── Neon text ── */
+.neon-cyan  { color: #00d4ff; text-shadow: 0 0 10px #00d4ffaa, 0 0 20px #00d4ff44; }
+.neon-blue  { color: #4499ff; text-shadow: 0 0 10px #4499ffaa; }
+.neon-green { color: #00ff88; text-shadow: 0 0 10px #00ff88aa, 0 0 20px #00ff8844; }
+.neon-red   { color: #ff3366; text-shadow: 0 0 10px #ff3366aa; }
+
+/* ── HUD corners ── */
+.hud-corner { position: relative; }
+.hud-corner::before,
+.hud-corner::after {
+  content: '';
+  position: absolute;
+  width: 10px; height: 10px;
+  border-color: rgba(0, 212, 255, 0.4);
+  border-style: solid;
+  transition: all 0.3s ease;
+}
+.hud-corner::before { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.hud-corner::after  { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+.hud-corner:hover::before,
+.hud-corner:hover::after {
+  width: 14px; height: 14px;
+  border-color: rgba(0, 212, 255, 0.8);
+}
+
+/* ── Animated grid background ── */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0,212,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: grid-drift 20s linear infinite;
+}
+@keyframes grid-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+/* ── Scan line overlay ── */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 212, 255, 0.012) 2px,
+    rgba(0, 212, 255, 0.012) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Moving scan beam ── */
+.scan-beam::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+  animation: scan-beam 6s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes scan-beam {
+  0%   { top: -2px; opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ── Floating particles ── */
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: float-up linear infinite;
+}
+@keyframes float-up {
+  0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 0.6; }
+  100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+}
+
+/* ── Neon pulse border ── */
+@keyframes border-pulse {
+  0%,100% { box-shadow: 0 0 0 1px rgba(0,212,255,0.1), 0 0 8px rgba(0,212,255,0.05); }
+  50%     { box-shadow: 0 0 0 1px rgba(0,212,255,0.3), 0 0 20px rgba(0,212,255,0.15); }
+}
+.border-pulse { animation: border-pulse 3s ease-in-out infinite; }
+
+/* ── Step card glow on success ── */
+@keyframes success-flash {
+  0%   { box-shadow: 0 0 0 rgba(0,255,136,0); }
+  30%  { box-shadow: 0 0 20px rgba(0,255,136,0.3), inset 0 0 10px rgba(0,255,136,0.05); }
+  100% { box-shadow: 0 0 0 rgba(0,255,136,0); }
+}
+.step-success-flash { animation: success-flash 0.8s ease-out forwards; }
+
+/* ── Typing cursor ── */
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0; }
+}
+.cursor-blink::after {
+  content: '▋';
+  color: #00d4ff;
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+/* ── Data stream (right panel) ── */
+@keyframes data-stream {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.3; }
+}
+
+/* ── Arc reactor pulse ── */
+@keyframes arc-pulse {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50%     { opacity: 1;   transform: scale(1.05); }
+}
+.arc-pulse { animation: arc-pulse 2s ease-in-out infinite; }
+
+/* ── Glow button ── */
+.btn-jarvis { transition: all 0.2s ease; }
+.btn-jarvis:hover {
+  box-shadow: 0 0 14px rgba(0,212,255,0.35);
+  border-color: rgba(0,212,255,0.55) !important;
+}
+
+/* ── Ping ring ── */
+@keyframes ping-cyan {
+  0%   { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.ping-cyan { animation: ping-cyan 1.2s ease-out infinite; }
+
+/* ── Holographic shimmer ── */
+@keyframes holo-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.holo-text {
+  background: linear-gradient(90deg, #00d4ff, #ffffff, #00d4ff, #0066ff, #00d4ff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: holo-shimmer 4s linear infinite;
+}
+
+/* ── Log entry slide ── */
+@keyframes log-slide {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.log-entry { animation: log-slide 0.2s ease-out forwards; }
+
+/* ── Status dot ── */
+@keyframes status-glow {
+  0%,100% { box-shadow: 0 0 4px currentColor; }
+  50%     { box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+}
+.status-dot { animation: status-glow 2s ease-in-out infinite; }
+
+/* ── Log colors ── */
+.log-info    { color: #4499ff; }
+.log-success { color: #00ff88; }
+.log-error   { color: #ff3366; }
+.log-warn    { color: #ffaa00; }
+.log-plan    { color: #00d4ff; }
+.log-user    { color: #a0c8e8; }
+.log-running { color: #00d4ff; }
+.log-done    { color: #00ff88; }
+
+/* ── Hexagon grid overlay ── */
+.hex-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='rgba(0,212,255,0.04)' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='rgba(0,212,255,0.04)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 56px 100px;
+}

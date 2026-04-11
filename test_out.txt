@@ -1,0 +1,6 @@
+starting pw
+launching browser
+browser launched
+page created, going to youtube...
+title: YouTube
+DONE

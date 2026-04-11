@@ -1,108 +1,63 @@
-# 🧠 NeuroAI — Jarvis-like Desktop AI Agent
+# 🧠 NeuroAI v3.0 — Jarvis-like Desktop AI Agent
 
-> A production-ready, locally-running AI agent that understands natural language and executes real actions on your desktop — powered by **Ollama (Llama3)**, **Playwright**, **OpenCV**, and **FastAPI**.
-
----
-
-## 📸 Preview
-
-```
-User: "Open Chrome and play Arijit Singh"
-NeuroAI: ▶️ Playing: Arijit Singh - Tum Hi Ho (YouTube)
-
-User: "Open camera and take photo"
-NeuroAI: 📸 Photo saved: photo_20260410_025201.jpg
-
-User: "What's the weather in London?"
-NeuroAI: 🌤️ London: ⛅ +14°C
-```
+> A production-ready, locally-running AI agent that understands natural language and voice commands, executes real desktop actions, and shows live execution in a futuristic Iron Man Jarvis UI — powered by **Ollama**, **Temporal**, **Playwright**, **OpenCV**, and **FastAPI**.
 
 ---
 
-## 🏗️ How It Was Built — Full Story
+## 🎬 Demo
 
-### The Idea
-The goal was to build a **Jarvis-like AI agent** that runs 100% locally — no cloud APIs, no subscriptions. A system that can:
-- Understand natural language commands
-- Break them into executable steps
-- Control the OS, browser, camera, and APIs
-- Show real-time execution in a modern UI
+```
+🎤 You speak: "Open Chrome and play Arijit Singh"
 
-### The Architecture Decision
-Instead of using LangChain (heavy, slow), we built a **custom two-layer planner**:
+JARVIS:
+  ✔ Step 1 — Open Website     → https://www.youtube.com
+  ✔ Step 2 — Search YouTube   → "Arijit Singh"
+  ✔ Step 3 — Play Video       → Best Of Arijit Singh 2024
 
-1. **Smart Rule-Based Parser** — handles 90% of commands instantly (0ms, no LLM needed)
-2. **LLM Fallback** — sends complex/unknown commands to Ollama with a 30s hard timeout
-
-This means the agent responds **instantly** for common commands even when RAM is low.
-
-### The Chrome Profile Problem
-Early versions used `subprocess` to open Chrome, then Playwright to control it. This caused Chrome's **profile picker** to appear and block automation. 
-
-**Fix:** Playwright launches its own **Chromium** instance directly — bypassing the profile picker entirely. No more conflicts.
-
-### The RAM Problem
-`llama3` (8B model) needs 4.6GB RAM. Most users had only 1-2GB free.
-
-**Fix:** 
-- Switched to `llama3.2:3b` (2.3GB)
-- Smart fallback handles most commands without LLM at all
-- Hard 30s timeout prevents hanging
-
-### The Python 3.14 Problem
-Many packages (`pydantic-core`, `greenlet`, `openai-whisper`) had no pre-built wheels for Python 3.14 and required C++ Build Tools to compile.
-
-**Fix:** Pinned exact versions with pre-built `cp314` wheels:
-- `pydantic==2.12.5` + `pydantic-core==2.41.5`
-- `playwright==1.52.0` (has cp314 wheel)
-- Replaced `openai-whisper` → Google STT (no compilation)
-- Used `--only-binary=:all:` during install
+🗣 Voice response: "Playing Best Of Arijit Singh 2024"
+```
 
 ---
 
-## 🧠 System Architecture
+## 🏗️ Architecture
 
 ```
-User Input (Text / Voice)
+Voice / Text Input
         │
         ▼
-┌─────────────────────────────┐
-│     Command Planner         │
-│  1. Smart Rule Parser       │  ← instant, no LLM
-│  2. Ollama LLM (fallback)   │  ← llama3.2:3b, 30s timeout
-└─────────────┬───────────────┘
-              │  JSON Plan
-              │  {"steps": [{"action": "play_youtube", "params": {"query": "Arijit Singh"}}]}
-              ▼
-┌─────────────────────────────┐
-│     Execution Engine        │
-│  • Runs steps sequentially  │
-│  • Tracks context state     │
-│  • Retries on failure       │
-│  • Skips if already done    │
-└──────┬──────────────────────┘
+┌─────────────────────────────────┐
+│        Command Planner          │
+│  1. Smart Rule Parser (0ms)     │  ← handles 90% instantly
+│  2. Ollama LLM fallback (30s)   │  ← llama3.2:3b
+└──────────────┬──────────────────┘
+               │  JSON Plan
+               ▼
+┌─────────────────────────────────┐
+│     Temporal Workflow Engine    │  ← retry, timeout, state
+│  • NeuroAIPlanWorkflow          │
+│  • Activities (19 actions)      │
+│  • Retry policy (3 attempts)    │
+│  • Falls back to Direct Exec    │
+└──────┬──────────────────────────┘
        │
-       ├──► OS Tools        (open/close apps, run commands, screenshot)
-       ├──► Browser Tools   (Playwright Chromium — YouTube, Google, websites)
-       ├──► Camera Tools    (OpenCV — webcam, photo capture)
-       └──► API Tools       (weather, news, HTTP)
+       ├──► Browser Tools   (Playwright Chromium)
+       ├──► OS Tools        (subprocess + psutil)
+       ├──► Camera Tools    (OpenCV)
+       └──► API Tools       (weather, news)
               │
               ▼
-┌─────────────────────────────┐
-│     Memory (SQLite)         │
-│  • Command history          │
-│  • Context state            │
-│  • User preferences         │
-└─────────────────────────────┘
+┌─────────────────────────────────┐
+│     Memory (SQLite)             │
+│  history · context · prefs      │
+└─────────────────────────────────┘
               │
               ▼
-┌─────────────────────────────┐
-│     React UI                │
-│  • Real-time WebSocket      │
-│  • Live step tracker        │
-│  • Light / Dark theme       │
-│  • Execution logs panel     │
-└─────────────────────────────┘
+┌─────────────────────────────────┐
+│     Iron Man Jarvis UI          │
+│  React + Framer Motion          │
+│  Real-time WebSocket streaming  │
+│  Voice input + TTS output       │
+└─────────────────────────────────┘
 ```
 
 ---
@@ -112,49 +67,61 @@ User Input (Text / Voice)
 ```
 NEUROAI/
 │
-├── main.py                    # FastAPI server + WebSocket endpoint
-├── .env                       # Configuration
-├── requirements.txt           # Python dependencies
-├── setup.bat                  # One-click Windows setup
-├── start.bat                  # One-click launcher
-│
-├── config/
-│   └── apps.json              # App paths per OS (Windows/Mac/Linux)
+├── main.py                    # FastAPI server + WebSocket + lifespan
+├── launch.bat                 # ONE-CLICK launcher (all services)
+├── start.bat                  # Alternative launcher (separate windows)
+├── temporal.exe               # Temporal CLI (bundled, Windows)
+├── requirements.txt
+├── .env
 │
 ├── agent/
-│   ├── planner.py             # NLP → JSON plan (rules + LLM fallback)
-│   ├── executor.py            # Step-by-step execution engine + context
+│   ├── planner.py             # Rule parser + Ollama LLM fallback
+│   ├── executor.py            # Direct step executor (Temporal fallback)
 │   ├── memory.py              # SQLite: history, context, preferences
-│   └── scheduler.py           # Daily task scheduler (HH:MM cron)
+│   └── scheduler.py          # Daily task scheduler (HH:MM)
+│
+├── temporal/
+│   ├── workflow.py            # NeuroAIPlanWorkflow (sequential steps)
+│   ├── activities.py          # 19 Temporal activities wrapping all tools
+│   ├── worker.py              # Temporal worker process
+│   └── client.py              # Workflow trigger + stream results
 │
 ├── tools/
-│   ├── system_tools.py        # OS: open/close apps, run commands, screenshot
-│   ├── browser_tools.py       # Playwright: YouTube, Google, websites, forms
-│   ├── camera_tools.py        # OpenCV: webcam open, photo capture
-│   └── api_tools.py           # HTTP: weather (wttr.in), news (Google RSS)
-│
-├── mcp/
-│   ├── tool_registry.py       # Central map: action name → function
-│   └── server.py              # MCP protocol endpoints (/mcp/tools, /mcp/invoke)
+│   ├── browser_tools.py       # Playwright: YouTube, Google, websites
+│   ├── system_tools.py        # OS: open/close apps, screenshot, shell
+│   ├── camera_tools.py        # OpenCV: webcam, photo capture
+│   └── api_tools.py           # HTTP: weather (wttr.in), news (RSS)
 │
 ├── voice/
-│   ├── stt.py                 # Speech-to-Text (Google STT default, Whisper optional)
-│   └── tts.py                 # Text-to-Speech (pyttsx3, ElevenLabs optional)
+│   ├── stt.py                 # Backend STT (sounddevice + Google)
+│   └── tts.py                 # Backend TTS (pyttsx3, daemon thread)
+│
+├── mcp/
+│   ├── tool_registry.py       # Central action → function map
+│   └── server.py              # MCP protocol endpoints
+│
+├── config/
+│   └── apps.json              # App paths per OS
 │
 ├── memory/
 │   └── agent_memory.db        # SQLite database (auto-created)
 │
-└── ui/                        # React + Tailwind frontend
-    ├── src/
-    │   ├── App.jsx             # Main app shell, WebSocket, theme toggle
-    │   ├── index.css           # Tailwind + custom animations
-    │   └── components/
-    │       ├── ChatPanel.jsx   # Chat UI, live step tracker, command guide
-    │       ├── LogsPanel.jsx   # Real-time execution logs
-    │       └── Sidebar.jsx     # Nav, history, tools list, scheduler
-    ├── package.json
-    ├── vite.config.js
-    └── tailwind.config.js
+├── logs/                      # Runtime logs (auto-created)
+│   ├── backend.log
+│   ├── frontend.log
+│   ├── worker.log
+│   └── temporal.log
+│
+└── ui/                        # React + Tailwind + Framer Motion
+    └── src/
+        ├── App.jsx             # Main shell, WebSocket, particles, cursor glow
+        ├── index.css           # Jarvis theme, animations, neon effects
+        └── components/
+            ├── CommandInput.jsx  # Input box + TTS toggle
+            ├── VoiceInput.jsx    # Real-time STT (Web Speech API)
+            ├── StepTracker.jsx   # Live step execution display
+            ├── LogsPanel.jsx     # Real-time execution logs
+            └── Sidebar.jsx       # History, tools, scheduler
 ```
 
 ---
@@ -163,40 +130,47 @@ NEUROAI/
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| Backend | Python 3.10+ / FastAPI | REST API + WebSocket server |
-| LLM | Ollama + Llama3.2:3b | Natural language understanding |
-| Browser | Playwright (Chromium) | Web automation, YouTube, Google |
+| Backend | Python 3.10–3.14 / FastAPI | REST API + WebSocket server |
+| LLM | Ollama + Llama3.2:3b | Natural language → JSON plan |
+| Workflow | Temporal (temporalio SDK) | Reliable step execution, retry |
+| Browser | Playwright (Chromium) | YouTube, Google, web automation |
 | Camera | OpenCV | Webcam access, photo capture |
 | OS | subprocess + psutil | App launch/kill, shell commands |
 | Memory | SQLite | History, context, preferences |
-| Voice STT | Google Speech Recognition | Voice input |
-| Voice TTS | pyttsx3 | Voice output |
+| Voice STT | Web Speech API (browser) | Real-time voice-to-text |
+| Voice STT | Google Speech Recognition | Backend fallback STT |
+| Voice TTS | Browser speechSynthesis | Instant voice responses |
+| Voice TTS | pyttsx3 | Backend TTS (offline) |
 | Frontend | React 18 + Vite | Modern chat UI |
-| Styling | Tailwind CSS | Light/dark theme |
+| Styling | Tailwind CSS | Jarvis dark theme |
+| Animation | Framer Motion | Smooth UI transitions |
 | Realtime | WebSocket | Live step streaming |
 
 ---
 
-## ✅ Supported Actions
+## ✅ Supported Actions (19 total)
 
-| Action | What It Does | Example |
+| Action | Description | Example |
 |--------|-------------|---------|
-| `open_app` | Launch any desktop app | `open_app(app="vscode")` |
-| `close_app` | Kill a running process | `close_app(app="spotify")` |
-| `open_website` | Navigate to URL in Playwright | `open_website(url="github.com")` |
-| `play_youtube` | Search YouTube + auto-play first result | `play_youtube(query="Arijit Singh")` |
-| `search_google` | Google search + show top results | `search_google(query="Python tutorials")` |
-| `click` | Click element by text or CSS selector | `click(target="Sign in")` |
-| `type` | Type text into focused element | `type(text="hello world")` |
-| `scroll` | Scroll page up/down | `scroll(direction="down", amount=3)` |
-| `take_screenshot` | Capture full screen | `take_screenshot(filename="snap.png")` |
-| `open_camera` | Open webcam preview window | `open_camera()` |
-| `click_photo` | Capture photo from webcam | `click_photo()` |
-| `get_weather` | Live weather via wttr.in | `get_weather(city="London")` |
-| `get_news` | Top news headlines | `get_news(topic="technology")` |
+| `open_website` | Navigate to URL | `open_website(url="github.com")` |
+| `search_youtube` | Search YouTube directly | `search_youtube(query="Arijit Singh")` |
+| `click_first_video` | Auto-click first result | `click_first_video()` |
+| `search_google` | Google search + results | `search_google(query="Python")` |
+| `click` | Click element by text/selector | `click(target="Sign in")` |
+| `scroll` | Scroll page | `scroll(direction="down", amount=3)` |
+| `send_email` | Open Gmail compose | `send_email(to="x@y.com")` |
+| `scrape` | Extract page content | `scrape(url="example.com")` |
+| `open_app` | Launch desktop app | `open_app(app="vscode")` |
+| `close_app` | Kill running process | `close_app(app="spotify")` |
 | `run_command` | Execute shell command | `run_command(cmd="ipconfig")` |
-| `send_email` | Open Gmail compose | `send_email(to="x@y.com", subject="Hi")` |
+| `take_screenshot` | Capture full screen | `take_screenshot()` |
+| `wait` | Pause execution | `wait(seconds=2)` |
 | `respond` | Return text response | `respond(message="Hello!")` |
+| `open_camera` | Open webcam preview | `open_camera()` |
+| `click_photo` | Capture photo | `click_photo()` |
+| `close_camera` | Close webcam | `close_camera()` |
+| `get_weather` | Live weather via wttr.in | `get_weather(city="London")` |
+| `get_news` | Top headlines via RSS | `get_news(topic="AI")` |
 
 ---
 
@@ -215,20 +189,18 @@ NEUROAI/
 ### Step 1 — Install Ollama & Pull Model
 
 ```bash
-# 1. Download Ollama from https://ollama.ai and install it
-# 2. Open a terminal and run:
+# Download from https://ollama.ai and install
 ollama pull llama3.2:3b
 
-# Verify it works:
+# Verify:
 ollama run llama3.2:3b "say hello"
 ```
 
-> **Why llama3.2:3b?** It needs only ~2.3GB RAM vs 4.6GB for llama3 8B.
-> If you have 16GB+ RAM, use `llama3` for better quality.
+> Use `llama3.2:3b` (~2.3GB RAM). For better quality use `llama3` (~4.6GB RAM).
 
 ---
 
-### Step 2 — Clone / Open the Project
+### Step 2 — Open Project
 
 ```bash
 cd "c:\Users\anshy\Desktop\AI PROJECT\NEUROAI"
@@ -236,7 +208,7 @@ cd "c:\Users\anshy\Desktop\AI PROJECT\NEUROAI"
 
 ---
 
-### Step 3 — Create Python Virtual Environment
+### Step 3 — Python Virtual Environment
 
 ```bash
 python -m venv venv
@@ -248,16 +220,9 @@ venv\Scripts\activate
 ### Step 4 — Install Python Dependencies
 
 ```bash
-# Upgrade pip first (important for Python 3.14)
 python -m pip install --upgrade pip setuptools wheel
-
-# Install all packages (binary only — no C++ compiler needed)
 pip install -r requirements.txt --only-binary=:all:
-
-# Install Playwright browser
 playwright install chromium
-
-# Install OpenCV for camera support
 pip install opencv-python --only-binary=:all:
 ```
 
@@ -273,25 +238,36 @@ cd ..
 
 ---
 
-### Step 6 — Start Everything
+### Step 6 — Launch Everything
 
-**Option A — Automatic (two terminals):**
-
-Terminal 1 — Backend:
+**Option A — One click (recommended):**
 ```bash
+launch.bat
+```
+This single file:
+- Kills any processes on ports 8000 / 7233 / 3000
+- Starts Temporal server → Worker → Backend → Frontend
+- Health-checks backend before declaring ready
+- Saves all logs to `logs/` folder
+- Press any key to stop all services
+
+**Option B — Manual (4 terminals):**
+
+```bash
+# Terminal 1 — Temporal Server
+temporal.exe server start-dev
+
+# Terminal 2 — Temporal Worker
+venv\Scripts\activate
+python -m temporal.worker
+
+# Terminal 3 — Backend
 venv\Scripts\activate
 python main.py
-```
 
-Terminal 2 — Frontend:
-```bash
+# Terminal 4 — Frontend
 cd ui
 npm run dev
-```
-
-**Option B — One-click:**
-```bash
-start.bat
 ```
 
 ---
@@ -304,32 +280,97 @@ http://localhost:3000
 
 ---
 
-## 🧪 Example Commands
+## 🎤 Voice Features
 
-### App Control
+### Real-time Voice Input (Browser)
+1. Click the **🎤 microphone button**
+2. Speak your command
+3. Text appears **live in the input box** as you speak (interim results)
+4. Speech ends → text is ready to send
+5. Click **Send** or enable **AUTO** mode to send automatically
+
+**Language support:** EN-IN · HI (Hindi) · EN-US — toggle with the `EN/HI/US` button
+
+**How it works:** Uses the browser's built-in **Web Speech API** with `continuous: true` and `interimResults: true` — no backend call needed, works instantly.
+
+### Voice Response (TTS)
+- Every command result is **spoken aloud** automatically
+- Uses browser `speechSynthesis` (prefers Microsoft Zira / Google voice)
+- Toggle **TTS ON/OFF** button in the input bar
+- Preference saved to localStorage
+
+### Backend Voice (Fallback)
+- If browser mic is unavailable, falls back to backend STT
+- Records 5 seconds via `sounddevice` → transcribes via Google Speech API
+- Backend TTS via `pyttsx3` runs in a dedicated daemon thread
+
+---
+
+## 🔁 Temporal Workflow Engine
+
+NeuroAI uses **Temporal** for production-grade execution:
+
 ```
-Open Chrome
-Open VS Code
-Open calculator
-Close Spotify
-Open Notepad
+Plan → NeuroAIPlanWorkflow
+         │
+         ├── Step 1: open_website  (timeout: 60s, retry: 3x)
+         ├── Step 2: search_youtube (timeout: 60s, retry: 3x)
+         └── Step 3: click_first_video (timeout: 30s, retry: 3x)
 ```
+
+**Retry policy:** 3 attempts, exponential backoff (2s → 4s → 8s)
+
+**Fallback:** If Temporal is not running, NeuroAI automatically falls back to the direct executor — everything still works.
+
+**Temporal UI:** http://localhost:8233 (workflow history, retries, state)
+
+---
+
+## 🎨 Jarvis UI Features
+
+| Feature | Description |
+|---------|-------------|
+| Iron Man theme | Dark background, neon cyan/blue glow, glassmorphism |
+| Floating particles | 18 animated cyan/blue/green particles |
+| Cursor glow | Soft radial gradient follows mouse |
+| Scan beam | Cyan line sweeps top to bottom every 6s |
+| Arc reactor logo | 3 spinning rings, pulses faster when executing |
+| Holographic text | "NEUROAI" cycles through gradient colors |
+| Step cards | Slide in with spring physics, shimmer while running |
+| Typing output | Step results animate in character by character |
+| Progress bar | Animated fill with glow effect |
+| Idle hologram | Large arc reactor with orbiting dot when waiting |
+| Real-time logs | Color-coded entries slide in from right |
+| Data streams | Vertical light streams in logs panel background |
+| HUD corners | Corner brackets on all panels, expand on hover |
+| Voice waveform | Real mic volume visualized as animated bars |
+
+---
+
+## 🧪 Example Commands
 
 ### YouTube & Music
 ```
 Open Chrome and play Arijit Singh
 Play lofi music
-Play Arijit Singh songs on YouTube
 Watch Python tutorial on YouTube
+Play Bollywood songs
 ```
 
-### Browser Automation
+### Browser
 ```
 Search Python tutorials on Google
 Go to github.com
-Open youtube.com
-Search AI news
 Open Gmail
+Search AI news
+```
+
+### Apps
+```
+Open VS Code
+Open calculator
+Open Notepad
+Close Spotify
 ```
 
 ### Camera
@@ -339,22 +380,26 @@ Open camera and take photo
 Take a screenshot
 ```
 
-### Multi-step Commands
-```
-Open Chrome and play Arijit Singh
-Open Chrome, go to Gmail, and compose mail
-Open camera and click picture
-Search Python on Google and click first link
-```
-
-### APIs & Info
+### APIs
 ```
 What's the weather in London?
 Weather in Mumbai
 Get latest tech news
 Get news about AI
+```
+
+### Shell
+```
 Run command: ipconfig
 Run command: dir
+Run command: systeminfo
+```
+
+### Multi-step
+```
+Open Chrome and play Arijit Singh
+Open camera and click picture
+Search Python on Google and click first link
 ```
 
 ---
@@ -363,123 +408,75 @@ Run command: dir
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/chat` | Send message, get plan + results |
+| `GET` | `/status` | Temporal + Ollama status |
+| `POST` | `/chat` | Send command, get plan + results |
 | `WS` | `/ws` | Real-time WebSocket streaming |
-| `GET` | `/history` | Get command history |
+| `GET` | `/history` | Command history |
 | `DELETE` | `/history` | Clear history |
-| `GET` | `/tools` | List all 22 available tools |
+| `GET` | `/tools` | List all 19 tools |
 | `GET` | `/context` | Current execution state |
-| `POST` | `/voice/listen` | Record + transcribe voice (5s) |
+| `POST` | `/voice/listen` | Record + transcribe (5s, backend) |
+| `POST` | `/voice/speak` | Speak text via backend TTS |
 | `POST` | `/schedule` | Schedule a daily task |
 | `GET` | `/schedules` | List scheduled tasks |
-| `GET` | `/mcp/tools` | MCP tool discovery |
-| `POST` | `/mcp/invoke` | Direct tool invocation |
 
 ---
 
 ## 🧠 How the Planner Works
 
-### 1. Smart Rule-Based Parser (instant)
+### Layer 1 — Smart Rule Parser (instant, 0ms)
 Handles ~90% of commands with zero LLM calls:
 
 ```
 "Open Chrome and play Arijit Singh"
-  → RE_PLAY matches → play_youtube(query="Arijit Singh")
-
-"open camera and take photo"
-  → RE_CAMERA matches → [open_camera(), click_photo()]
+  → RE_PLAY matches → youtube_steps("Arijit Singh")
 
 "weather in Mumbai"
   → RE_WEATHER matches → get_weather(city="Mumbai")
 
 "run chome and serach youtube play song"  ← typos OK
   → APP_ALIASES: "chome" → "chrome"
-  → RE_YOUTUBE + RE_PLAY → play_youtube(query="song")
+  → RE_PLAY → youtube_steps("song")
 ```
 
-### 2. LLM Fallback (complex commands)
-For commands the rules can't handle, sends to Ollama:
+### Layer 2 — Ollama LLM (complex commands, 30s timeout)
+For commands the rules can't handle:
 - Model: `llama3.2:3b`
 - Hard timeout: 30 seconds
-- Context window: 1024 tokens (low RAM usage)
-- Falls back to rule parser if LLM fails or RAM is low
+- Context: last 2 commands for follow-up understanding
+- Falls back to rule parser if LLM fails
 
-### 3. JSON Plan Format
+### JSON Plan Format
 ```json
 {
   "steps": [
-    {"action": "open_app",    "params": {"app": "vscode"}},
-    {"action": "play_youtube","params": {"query": "Arijit Singh"}},
-    {"action": "get_weather", "params": {"city": "London"}}
+    {"action": "open_website",      "params": {"url": "https://www.youtube.com"}},
+    {"action": "search_youtube",    "params": {"query": "Arijit Singh"}},
+    {"action": "click_first_video", "params": {}}
   ],
-  "summary": "Open VS Code, play Arijit Singh, check London weather"
+  "summary": "Play Arijit Singh on YouTube"
 }
 ```
 
 ---
 
-## 🔁 Execution Engine
-
-The executor runs each step sequentially with:
-
-- **Context tracking** — remembers `current_app`, `current_url`, `last_action`
-- **Skip logic** — if app already open, skips `open_app`
-- **Auto-retry** — browser actions retry once on failure
-- **Real-time streaming** — each step status sent via WebSocket instantly
-
-```
-Step 1: open_app(chrome)     → running → ✅ Opened chrome
-Step 2: play_youtube(Arijit) → running → ▶️ Playing: Arijit Singh - Tum Hi Ho
-```
-
----
-
-## 🎨 UI Features
-
-| Feature | Description |
-|---------|-------------|
-| Light / Dark theme | Toggle with ☀️/🌙 button, saved to localStorage |
-| Live step tracker | Shows each action running/success/error in real-time inside chat |
-| Execution logs panel | Right panel with color-coded log entries |
-| Context bar | Shows current app + URL in header |
-| Command guide | Categorized examples with click-to-run |
-| Copy button | Hover any message to copy it |
-| Voice input | Click mic → speak → auto-sends |
-| History tab | All past commands with timestamps |
-| Tools tab | All 22 tools grouped by category |
-| Schedule tab | Set daily tasks at specific times |
-
----
-
-## ⚠️ Troubleshooting
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| `OpenCV not installed` | opencv-python missing | `pip install opencv-python --only-binary=:all:` |
-| `Server error 500` from Ollama | Not enough free RAM | Close apps to free 2.5GB, or use `llama3.2:3b` |
-| `Connection refused` on :8000 | Backend not running | Run `python main.py` |
-| `Connection refused` on :3000 | Frontend not running | Run `cd ui && npm run dev` |
-| Browser shows profile picker | Using system Chrome | Already fixed — Playwright uses its own Chromium |
-| `pydantic-core` build fails | Python 3.14 + no C++ tools | Use `pip install --only-binary=:all:` |
-| `greenlet` build fails | Same as above | Already handled in requirements.txt |
-| Voice not working | sounddevice/numpy missing | `pip install sounddevice numpy --only-binary=:all:` |
-| Slow responses | LLM being called for simple commands | Smart fallback handles most commands instantly |
-| `playwright install` fails | Network issue | Try `playwright install chromium --with-deps` |
-
----
-
 ## 🔊 Voice Setup
 
-**Default (Google STT — online, no install):**
+**Default (Browser Web Speech API — no install needed):**
+- Works in Chrome and Edge
+- Real-time interim results
+- Supports Hindi + English
+
+**Backend STT (Google — requires internet):**
 ```bash
-# Works out of the box, requires internet
+# Already installed via requirements.txt
 # Set in .env:
 STT_ENGINE=google
 ```
 
-**Whisper (offline, requires C++ Build Tools):**
+**Backend STT (Whisper — offline):**
 ```bash
-# Only if you have Visual C++ Build Tools installed:
+# Requires Visual C++ Build Tools
 pip install faster-whisper
 # Set in .env:
 STT_ENGINE=whisper
@@ -492,18 +489,32 @@ STT_ENGINE=whisper
 Edit `agent/planner.py` line 8:
 
 ```python
-MODEL = "llama3.2:3b"   # default — needs ~2.3GB RAM
-MODEL = "llama3"         # better quality — needs ~4.6GB RAM  
-MODEL = "phi3"           # fastest — needs ~1.5GB RAM
-MODEL = "mistral"        # good balance — needs ~3GB RAM
-MODEL = "llama3:70b"     # best quality — needs 40GB+ RAM
+MODEL = "llama3.2:3b"   # default — ~2.3GB RAM
+MODEL = "llama3"         # better  — ~4.6GB RAM
+MODEL = "phi3"           # fastest — ~1.5GB RAM
+MODEL = "mistral"        # balanced — ~3GB RAM
 ```
-
-Then restart the backend.
 
 ---
 
-## 📊 Memory & Personalization
+## ⚠️ Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| Port 8000 in use | Run `launch.bat` — it kills old processes automatically |
+| Temporal not found | `temporal.exe` is bundled — run `launch.bat` |
+| Worker can't connect | Start `temporal.exe server start-dev` first |
+| Browser mic denied | Click 🔒 in address bar → allow microphone |
+| No speech detected | Speak clearly, check mic in Windows Sound settings |
+| `OpenCV not installed` | `pip install opencv-python --only-binary=:all:` |
+| Ollama error 500 | Free 2.5GB RAM or use `llama3.2:3b` |
+| `pydantic-core` build fails | Use `pip install --only-binary=:all:` |
+| Frontend on port 3001 | Port 3000 was busy — open `http://localhost:3001` |
+| TTS not speaking | Toggle TTS ON in input bar, check system volume |
+
+---
+
+## 📊 Memory & Context
 
 All data stored in `memory/agent_memory.db` (SQLite, auto-created):
 
@@ -513,73 +524,78 @@ All data stored in `memory/agent_memory.db` (SQLite, auto-created):
 | `context` | Current app, URL, last action |
 | `preferences` | User settings |
 
-The planner uses the last 2 commands as context for better understanding of follow-up commands.
-
 ---
 
 ## 🛠️ Adding Custom Tools
 
-1. Add your function to `tools/system_tools.py` or a new file:
+1. Add function to `tools/system_tools.py` or a new file:
 ```python
-def my_tool(param1: str, param2: str) -> str:
-    # your logic here
-    return f"✅ Done: {param1}"
+def my_tool(param: str) -> str:
+    return f"Done: {param}"
 ```
 
 2. Register in `mcp/tool_registry.py`:
 ```python
 from tools.my_file import my_tool
-# In _register():
-"my_tool_name": my_tool,
+"my_tool": my_tool,
 ```
 
-3. Add to planner rules in `agent/planner.py` (optional, for instant matching):
+3. Add Temporal activity in `temporal/activities.py`:
+```python
+@activity.defn(name="my_tool")
+async def act_my_tool(param: str) -> str:
+    import asyncio
+    return await asyncio.to_thread(my_tool, param)
+```
+
+4. Add to planner rules in `agent/planner.py` (optional):
 ```python
 if "my keyword" in t:
-    return _plan([_step("my_tool_name", param1="value")], "Summary")
+    return _plan([_step("my_tool", param="value")], "Summary")
 ```
-
-The LLM will also learn to use it automatically from the system prompt.
 
 ---
 
-## 📦 requirements.txt Explained
+## 📦 requirements.txt
 
 ```
 fastapi==0.115.12        # Web framework
-uvicorn[standard]==0.34.3 # ASGI server with WebSocket
-httpx==0.28.1            # Async HTTP client (Ollama calls)
-pydantic==2.12.5         # Data validation (cp314 wheel)
-pydantic-core==2.41.5    # Pydantic core (cp314 wheel)
-playwright==1.52.0       # Browser automation (cp314 wheel)
+uvicorn[standard]==0.34.3 # ASGI server
+httpx==0.28.1            # Async HTTP (Ollama calls)
+pydantic==2.12.5         # Data validation
+pydantic-core==2.41.5    # Pydantic core
+playwright==1.52.0       # Browser automation
 psutil==7.0.0            # Process management
-pywin32==311             # Windows API (Windows only)
+pywin32==311             # Windows API
 pyttsx3==2.90            # Text-to-speech
-sounddevice==0.5.1       # Audio recording for voice
+sounddevice==0.5.1       # Audio recording
 soundfile==0.12.1        # Audio file I/O
 SpeechRecognition==3.10.4 # Google STT
-python-dotenv==1.1.0     # .env file loading
-opencv-python            # Camera/webcam support
+python-dotenv==1.1.0     # .env loading
+python-multipart==0.0.20 # Form data
+temporalio==1.7.1        # Temporal workflow SDK
+opencv-python            # Camera/webcam
 numpy                    # Required by sounddevice + opencv
 ```
 
-> All packages use pre-built binary wheels — **no C++ compiler required**.
-
 ---
 
-## 🏆 What Makes This Different
+## 🏆 What Makes NeuroAI v3.0 Different
 
-| Feature | NeuroAI | Typical AI Agent |
-|---------|---------|-----------------|
-| Runs locally | ✅ 100% offline | ❌ Cloud API |
-| Instant response | ✅ Rule-based (0ms) | ❌ Always calls LLM |
-| Typo tolerance | ✅ "chome" → chrome | ❌ Exact match only |
+| Feature | NeuroAI v3.0 | Typical AI Agent |
+|---------|-------------|-----------------|
+| Runs 100% locally | ✅ | ❌ Cloud API |
+| Instant response | ✅ Rule-based (0ms) | ❌ Always LLM |
+| Temporal workflows | ✅ Retry + state | ❌ Fire and forget |
+| Real-time voice STT | ✅ Live interim text | ❌ Record then transcribe |
+| Hindi + English voice | ✅ | ❌ English only |
+| Voice TTS response | ✅ Browser + backend | ❌ Rarely |
+| Iron Man Jarvis UI | ✅ Framer Motion | ❌ Basic chat |
+| Typo tolerance | ✅ "chome" → chrome | ❌ Exact match |
 | Camera support | ✅ OpenCV | ❌ Rarely |
 | YouTube auto-play | ✅ Clicks first result | ❌ Just opens URL |
-| No profile picker | ✅ Own Chromium | ❌ System Chrome issues |
+| One-click launch | ✅ `launch.bat` | ❌ Multiple terminals |
 | Low RAM mode | ✅ Works with 1GB free | ❌ Crashes |
-| Light + Dark theme | ✅ Toggle button | ❌ Dark only |
-| Real-time logs | ✅ WebSocket streaming | ❌ After completion |
 
 ---
 
@@ -592,15 +608,17 @@ MIT License — free to use, modify, and distribute.
 ## 👨‍💻 Built With
 
 - **Ollama** — local LLM inference
+- **Temporal** — durable workflow execution
 - **Playwright** — browser automation
-- **FastAPI** — async Python web framework  
+- **FastAPI** — async Python web framework
 - **React + Vite** — modern frontend
+- **Framer Motion** — fluid animations
 - **Tailwind CSS** — utility-first styling
 - **OpenCV** — computer vision / camera
 - **SQLite** — embedded database
+- **Web Speech API** — real-time voice recognition
 - **pyttsx3** — offline text-to-speech
 
 ---
 
-*NeuroAI v2.0 — Built as a production-ready Jarvis-like desktop AI agent*
-"# NeuroAI-Pilot" 
+*NeuroAI v3.0 — Production-ready Jarvis-like Desktop AI Agent*

@@ -1,0 +1,51 @@
+{
+  "apps": {
+    "chrome": {
+      "windows": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "linux": "google-chrome",
+      "mac": "open -a 'Google Chrome'"
+    },
+    "firefox": {
+      "windows": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+      "linux": "firefox",
+      "mac": "open -a Firefox"
+    },
+    "vscode": {
+      "windows": "code",
+      "linux": "code",
+      "mac": "code"
+    },
+    "notepad": {
+      "windows": "notepad.exe",
+      "linux": "gedit",
+      "mac": "open -a TextEdit"
+    },
+    "calculator": {
+      "windows": "calc.exe",
+      "linux": "gnome-calculator",
+      "mac": "open -a Calculator"
+    },
+    "terminal": {
+      "windows": "cmd.exe",
+      "linux": "gnome-terminal",
+      "mac": "open -a Terminal"
+    },
+    "spotify": {
+      "windows": "%APPDATA%\\Spotify\\Spotify.exe",
+      "linux": "spotify",
+      "mac": "open -a Spotify"
+    },
+    "explorer": {
+      "windows": "explorer.exe",
+      "linux": "nautilus",
+      "mac": "open ."
+    }
+  },
+  "browser_profiles": {
+    "default": "chromium",
+    "headless": false
+  },
+  "scheduler": {
+    "check_interval_seconds": 60
+  }
+}

@@ -1,0 +1,13 @@
+Testing open_website...
+open_website OK: Opened: https://www.youtube.com | YouTube
+Testing search_youtube...
+search_youtube OK: Searched YouTube for: arijit singh
+Testing click_first_video...
+click_first_video OK: Playing: Best Of Arijit Singh 2024 | Arijit Singh Hits Songs | Arijit
+Exception ignored while calling deallocator <function BaseSubprocessTransport.__del__ at 0x0000018A1AEE7320>:
+Traceback (most recent call last):
+  File "C:\Users\anshy\AppData\Local\Programs\Python\Python314\Lib\asyncio\base_subprocess.py", line 135, in __del__
+  File "C:\Users\anshy\AppData\Local\Programs\Python\Python314\Lib\asyncio\base_subprocess.py", line 74, in __repr__
+  File "C:\Users\anshy\AppData\Local\Programs\Python\Python314\Lib\asyncio\proactor_events.py", line 80, in __repr__
+  File "C:\Users\anshy\AppData\Local\Programs\Python\Python314\Lib\asyncio\windows_utils.py", line 102, in fileno
+ValueError: I/O operation on closed pipe
