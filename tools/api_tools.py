@@ -359,3 +359,187 @@ async def get_trivia(category: str = "general") -> str:
             return f"Trivia ({q['category']}):\nQ: {q['question']}\nA: {q['correct_answer']}"
     except Exception as e:
         return f"Trivia failed: {e}"
+
+
+async def generate_password(length: int = 16, symbols: bool = True) -> str:
+    import secrets, string
+    chars = string.ascii_letters + string.digits
+    if symbols:
+        chars += "!@#$%^&*"
+    pwd = ''.join(secrets.choice(chars) for _ in range(max(8, min(64, int(length)))))
+    return f"Generated password ({length} chars): {pwd}"
+
+
+async def summarize_text(text: str) -> str:
+    """Simple extractive summary — returns first 3 sentences."""
+    import re
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    summary = ' '.join(sentences[:3])
+    return f"Summary: {summary}" if summary else "Nothing to summarize"
+
+
+async def get_forex_rates(base: str = "USD") -> str:
+    try:
+        async with httpx.AsyncClient(timeout=8) as c:
+            r = await c.get(f"https://open.er-api.com/v6/latest/{base.upper()}")
+            d = r.json()
+            rates = d.get("rates", {})
+            top = ["INR", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "SGD", "AED"]
+            lines = [f"{k}: {rates[k]:.4f}" for k in top if k in rates]
+            return f"Forex rates (base {base.upper()}):\n" + "\n".join(lines)
+    except Exception as e:
+        return f"Forex rates failed: {e}"
+
+
+async def get_earthquake_data() -> str:
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_week.geojson")
+            d = r.json()
+            quakes = d.get("features", [])[:5]
+            if not quakes:
+                return "No significant earthquakes this week"
+            lines = []
+            for q in quakes:
+                p = q["properties"]
+                lines.append(f"M{p['mag']} — {p['place']} ({p['type']})")
+            return "Recent significant earthquakes:\n" + "\n".join(lines)
+    except Exception as e:
+        return f"Earthquake data failed: {e}"
+
+
+async def get_number_fact(number: int = None) -> str:
+    try:
+        import random
+        n = number if number is not None else random.randint(1, 1000)
+        async with httpx.AsyncClient(timeout=8) as c:
+            r = await c.get(f"http://numbersapi.com/{n}")
+            return f"Number fact: {r.text.strip()}"
+    except Exception as e:
+        return f"Number fact failed: {e}"
+
+
+async def get_word_of_day() -> str:
+    try:
+        async with httpx.AsyncClient(timeout=8) as c:
+            r = await c.get("https://api.wordnik.com/v4/words.json/wordOfTheDay",
+                            params={"api_key": "a2a73e7b947cad4b0000000100a0000000000000000000000000000000000000"})
+            d = r.json()
+            word = d.get("word", "")
+            defn = d.get("definitions", [{}])[0].get("text", "")
+            return f"Word of the day: {word}\n{defn}"
+    except Exception:
+        # fallback to random dictionary word
+        words = ["ephemeral", "serendipity", "mellifluous", "sonder", "hiraeth", "petrichor"]
+        import random
+        return f"Word of the day: {random.choice(words)}"
+
+
+async def get_chuck_norris_joke() -> str:
+    try:
+        async with httpx.AsyncClient(timeout=8) as c:
+            r = await c.get("https://api.chucknorris.io/jokes/random")
+            return f"Chuck Norris: {r.json().get('value', '')}"
+    except Exception as e:
+        return f"Joke failed: {e}"
+
+
+async def get_dad_joke() -> str:
+    try:
+        async with httpx.AsyncClient(timeout=8, headers={"Accept": "application/json"}) as c:
+            r = await c.get("https://icanhazdadjoke.com/")
+            return f"Dad joke: {r.json().get('joke', '')}"
+    except Exception as e:
+        return f"Dad joke failed: {e}"
+
+
+# ── News by Category (Real-world fields) ──────────────────────────────────────
+
+NEWS_CATEGORIES = {
+    "technology":    "technology AI software",
+    "health":        "health medicine healthcare",
+    "law":           "law legal court justice",
+    "education":     "education school university",
+    "finance":       "finance economy stock market",
+    "science":       "science research discovery",
+    "sports":        "sports cricket football",
+    "politics":      "politics government policy",
+    "business":      "business startup entrepreneur",
+    "entertainment": "entertainment movies bollywood",
+    "world":         "world international global",
+    "india":         "India news today",
+}
+
+
+async def get_news_by_category(category: str = "technology", limit: int = 5) -> str:
+    """Fetch real news headlines for a specific real-world category."""
+    query = NEWS_CATEGORIES.get(category.lower(), category)
+    try:
+        async with httpx.AsyncClient(timeout=12) as c:
+            r = await c.get(f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en-IN&gl=IN&ceid=IN:en")
+            titles = re.findall(r'<title>(.*?)</title>', r.text)[1:limit+1]
+            sources = re.findall(r'<source[^>]*>(.*?)</source>', r.text)[:limit]
+            if not titles:
+                return f"No {category} news found"
+            lines = []
+            for i, t in enumerate(titles):
+                src = sources[i] if i < len(sources) else ""
+                lines.append(f"• {t}" + (f" [{src}]" if src else ""))
+            return f"📰 {category.upper()} NEWS:\n" + "\n".join(lines)
+    except Exception as e:
+        return f"News failed: {e}"
+
+
+async def get_daily_digest(categories: list = None) -> str:
+    """Fetch a multi-category daily news digest."""
+    if not categories:
+        categories = ["technology", "health", "finance", "world", "india"]
+    results = []
+    async with httpx.AsyncClient(timeout=15) as c:
+        for cat in categories[:6]:
+            query = NEWS_CATEGORIES.get(cat.lower(), cat)
+            try:
+                r = await c.get(f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en-IN&gl=IN&ceid=IN:en")
+                titles = re.findall(r'<title>(.*?)</title>', r.text)[1:3]
+                if titles:
+                    results.append(f"[{cat.upper()}]\n" + "\n".join(f"  • {t}" for t in titles))
+            except Exception:
+                pass
+    return "📰 DAILY DIGEST\n\n" + "\n\n".join(results) if results else "Could not fetch digest"
+
+
+async def get_breaking_news() -> str:
+    """Fetch top breaking news from India and world."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get("https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en")
+            titles = re.findall(r'<title>(.*?)</title>', r.text)[1:8]
+            return "🔴 BREAKING NEWS:\n" + "\n".join(f"• {t}" for t in titles)
+    except Exception as e:
+        return f"Breaking news failed: {e}"
+
+
+async def get_news_articles(category: str = "technology", limit: int = 8) -> list:
+    """Return structured news articles as list of dicts for UI display."""
+    query = NEWS_CATEGORIES.get(category.lower(), category)
+    articles = []
+    try:
+        async with httpx.AsyncClient(timeout=12) as c:
+            r = await c.get(f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en-IN&gl=IN&ceid=IN:en")
+            items = re.findall(r'<item>(.*?)</item>', r.text, re.DOTALL)[:limit]
+            for item in items:
+                title  = re.search(r'<title>(.*?)</title>', item)
+                link   = re.search(r'<link>(.*?)</link>', item)
+                source = re.search(r'<source[^>]*>(.*?)</source>', item)
+                pubdate= re.search(r'<pubDate>(.*?)</pubDate>', item)
+                if title:
+                    articles.append({
+                        "title":   title.group(1).strip(),
+                        "link":    link.group(1).strip() if link else "",
+                        "source":  source.group(1).strip() if source else "Google News",
+                        "pubdate": pubdate.group(1).strip() if pubdate else "",
+                        "category": category,
+                    })
+    except Exception:
+        pass
+    return articles

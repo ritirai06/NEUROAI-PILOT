@@ -68,6 +68,7 @@ def click_photo(filename: str = None) -> str:
     path = os.path.join(os.getcwd(), filename)
     import cv2
     cv2.imwrite(path, frame)
+    close_camera()
     return f"📸 Photo saved: {path}"
 
 

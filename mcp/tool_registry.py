@@ -47,6 +47,9 @@ from tools.api_tools import (
     get_ip_info, get_moon_phase, get_nasa_apod, get_random_dog, get_random_cat,
     get_country_info, get_holidays, get_air_quality, uuid_generate,
     get_color_info, get_advice, get_trivia,
+    generate_password, summarize_text, get_forex_rates, get_earthquake_data,
+    get_number_fact, get_word_of_day, get_chuck_norris_joke, get_dad_joke,
+    get_news_by_category, get_daily_digest, get_breaking_news, get_news_articles,
 )
 from tools.camera_tools import open_camera, click_photo, close_camera, record_video, get_camera_info
 
@@ -213,6 +216,17 @@ class ToolRegistry:
             "get_color_info":       get_color_info,
             "get_advice":           get_advice,
             "get_trivia":           get_trivia,
+            "generate_password":    generate_password,
+            "summarize_text":       summarize_text,
+            "get_forex_rates":      get_forex_rates,
+            "get_earthquake_data":  get_earthquake_data,
+            "get_number_fact":      get_number_fact,
+            "get_word_of_day":      get_word_of_day,
+            "get_chuck_norris_joke":get_chuck_norris_joke,
+            "get_dad_joke":         get_dad_joke,
+            "get_news_by_category": get_news_by_category,
+            "get_daily_digest":     get_daily_digest,
+            "get_breaking_news":    get_breaking_news,
             # ── Camera ───────────────────────────────────────────────────────
             "open_camera":          open_camera,
             "click_photo":          click_photo,
@@ -261,7 +275,10 @@ class ToolRegistry:
                          "get_github_user","api_get","api_post","check_website_status",
                          "get_ip_info","get_moon_phase","get_nasa_apod","get_random_dog","get_random_cat",
                          "get_country_info","get_holidays","get_air_quality","uuid_generate",
-                         "get_color_info","get_advice","get_trivia"],
+                         "get_color_info","get_advice","get_trivia",
+                         "generate_password","summarize_text","get_forex_rates","get_earthquake_data",
+                         "get_number_fact","get_word_of_day","get_chuck_norris_joke","get_dad_joke",
+                         "get_news_by_category","get_daily_digest","get_breaking_news"],
             "Camera":   ["open_camera","click_photo","close_camera","record_video","get_camera_info"],
         }
         return [{"name": k, "group": g}

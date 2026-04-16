@@ -94,6 +94,9 @@ RE_PLAY    = re.compile(r'\b(play|listen|watch|stream)\b')
 RE_YOUTUBE = re.compile(r'\b(youtube|yt|you tube)\b')
 RE_WEATHER = re.compile(r'\b(weather|temperature|forecast)\b')
 RE_NEWS    = re.compile(r'\b(news|headlines|latest)\b')
+RE_NEWS_CAT= re.compile(r'\b(law|legal|health|healthcare|medical|education|school|finance|economy|science|sports|cricket|politics|government|business|startup|entertainment|bollywood|world|india|breaking)\s+news\b')
+RE_DIGEST  = re.compile(r'\b(daily digest|news digest|morning news|today news|all news)\b')
+RE_BREAKING= re.compile(r'\b(breaking news|top news|latest news)\b')
 RE_SHOT    = re.compile(r'\b(screenshot|screen shot|capture screen|snap)\b')
 RE_CAMERA  = re.compile(r'\b(camera|webcam|photo|picture|selfie)\b')
 RE_DUCK    = re.compile(r'\b(duckduckgo|ddg|duck duck go)\b')
@@ -123,6 +126,35 @@ RE_RESOLUTION = re.compile(r'\b(screen resolution|display resolution|resolution)
 RE_RECORD  = re.compile(r'\b(record video|record camera|video record)\b')
 RE_CAMINFO = re.compile(r'\b(camera info|webcam info|camera details)\b')
 RE_INCOG   = re.compile(r'\b(incognito|private.*tab|private.*window)\b')
+RE_CALC    = re.compile(r'\b(calculate|compute|what is|solve|math)\b')
+RE_DEFINE  = re.compile(r'\b(define|meaning of|what does.*mean|definition)\b')
+RE_TRANS   = re.compile(r'\b(translate|translation)\b')
+RE_JOKE    = re.compile(r'\b(joke|tell me a joke|make me laugh|funny)\b')
+RE_QUOTE   = re.compile(r'\b(quote|inspire|motivational quote)\b')
+RE_CRYPTO  = re.compile(r'\b(crypto|bitcoin|ethereum|btc|eth|coin price)\b')
+RE_STOCK   = re.compile(r'\b(stock price|share price|stock of|nse|bse)\b')
+RE_WIKI    = re.compile(r'\b(wikipedia|wiki|who is|what is.*wiki)\b')
+RE_FOREX   = re.compile(r'\b(forex|exchange rate|currency rate|usd to|inr to)\b')
+RE_QUAKE   = re.compile(r'\b(earthquake|seismic|tremor)\b')
+RE_PASS    = re.compile(r'\b(generate password|random password|strong password|create password)\b')
+RE_NUMFACT = re.compile(r'\b(number fact|fact about number|fun number)\b')
+RE_DADJOKE = re.compile(r'\b(dad joke|pun)\b')
+RE_CHUCK   = re.compile(r'\b(chuck norris)\b')
+RE_SYSINFO = re.compile(r'\b(system info|system status|pc info|computer info)\b')
+RE_BATTERY = re.compile(r'\b(battery|battery status|battery level)\b')
+RE_WIFI    = re.compile(r'\b(wifi|wi-fi|network info|wifi info)\b')
+RE_PING    = re.compile(r'\b(ping|ping test)\b')
+RE_VOLUME  = re.compile(r'\b(volume|set volume|mute|unmute|volume up|volume down)\b')
+RE_REMIND  = re.compile(r'\b(remind me|set reminder|reminder)\b')
+RE_DATETIME= re.compile(r'\b(what time|current time|what date|today date|date and time)\b')
+RE_NOTIFY  = re.compile(r'\b(notify|notification|show notification|alert me)\b')
+RE_LOCK    = re.compile(r'\b(lock screen|lock pc|lock computer)\b')
+RE_SLEEP   = re.compile(r'\b(sleep pc|sleep computer|hibernate)\b')
+RE_SHUTDOWN= re.compile(r'\b(shutdown|shut down|power off)\b')
+RE_RESTART = re.compile(r'\b(restart|reboot)\b')
+RE_MAPS    = re.compile(r'\b(maps|google maps|directions|navigate to|location of)\b')
+RE_WIKI_OPEN = re.compile(r'\b(open wikipedia|go to wikipedia|wikipedia page)\b')
+RE_TRANSLATE_OPEN = re.compile(r'\b(open translate|google translate)\b')
 
 
 def _find_app(text: str) -> str | None:
@@ -224,7 +256,32 @@ class Planner:
             city = m.group(1).strip() if m else "Delhi"
             return _plan([_step("get_air_quality", city=city)], f"Air quality in {city}")
 
-        # NEWS
+        # EARTHQUAKE
+        if RE_QUAKE.search(t):
+            return _plan([_step("get_earthquake_data")], "Recent earthquakes")
+
+        # BREAKING NEWS
+        if RE_BREAKING.search(t):
+            return _plan([_step("get_breaking_news")], "Breaking news")
+
+        # DAILY DIGEST
+        if RE_DIGEST.search(t):
+            return _plan([_step("get_daily_digest")], "Daily news digest")
+
+        # NEWS BY CATEGORY (law, health, education, etc.)
+        if RE_NEWS_CAT.search(t):
+            m = re.search(r'\b(law|legal|health|healthcare|medical|education|school|finance|economy|science|sports|cricket|politics|government|business|startup|entertainment|bollywood|world|india|breaking)\b', t)
+            cat_map = {
+                "legal": "law", "healthcare": "health", "medical": "health",
+                "school": "education", "economy": "finance",
+                "cricket": "sports", "government": "politics",
+                "startup": "business", "bollywood": "entertainment",
+            }
+            raw_cat = m.group(1) if m else "technology"
+            category = cat_map.get(raw_cat, raw_cat)
+            return _plan([_step("get_news_by_category", category=category)], f"{category.title()} news")
+
+        # NEWS (general)
         if RE_NEWS.search(t):
             m = re.search(r'(?:news|headlines)\s+(?:about|on|for)?\s*([a-zA-Z\s]{2,30}?)(?:\?|$)', t)
             topic = m.group(1).strip() if m else "technology"
@@ -392,6 +449,140 @@ class Planner:
             return _plan([_step("open_website",
                 url=f"https://mail.google.com/mail/?view=cm&fs=1&to={to}&su={subj.group(1).strip() if subj else 'Hello'}")],
                 f"Compose email to {to}")
+
+        # CALCULATE
+        if RE_CALC.search(t):
+            expr = re.sub(r'\b(calculate|compute|what is|solve|math)\b', '', t).strip(' ?')
+            if expr:
+                return _plan([_step("calculate", expression=expr)], f"Calculate: {expr}")
+
+        # DEFINE WORD
+        if RE_DEFINE.search(t):
+            m = re.search(r'(?:define|meaning of|definition of|what does)\s+([a-zA-Z]+)', t)
+            word = m.group(1) if m else t.split()[-1]
+            return _plan([_step("define_word", word=word)], f"Define: {word}")
+
+        # TRANSLATE
+        if RE_TRANS.search(t):
+            m = re.search(r'translate\s+(.+?)\s+(?:to|in)\s+([a-zA-Z]+)', t)
+            if m:
+                return _plan([_step("translate_text", text=m.group(1), target_lang=m.group(2)[:2])], f"Translate: {m.group(1)}")
+            return _plan([_step("open_google_translate")], "Open Google Translate")
+
+        # JOKE
+        if RE_JOKE.search(t):
+            if RE_DADJOKE.search(t):
+                return _plan([_step("get_dad_joke")], "Dad joke")
+            if RE_CHUCK.search(t):
+                return _plan([_step("get_chuck_norris_joke")], "Chuck Norris joke")
+            return _plan([_step("get_joke")], "Tell a joke")
+
+        # QUOTE
+        if RE_QUOTE.search(t):
+            return _plan([_step("get_quote")], "Inspirational quote")
+
+        # CRYPTO
+        if RE_CRYPTO.search(t):
+            m = re.search(r'\b(bitcoin|ethereum|btc|eth|dogecoin|doge|solana|sol|bnb|xrp)\b', t)
+            coin = {"btc":"bitcoin","eth":"ethereum","doge":"dogecoin","sol":"solana"}.get(m.group(1), m.group(1)) if m else "bitcoin"
+            return _plan([_step("get_crypto_price", coin=coin)], f"Crypto price: {coin}")
+
+        # STOCK
+        if RE_STOCK.search(t):
+            m = re.search(r'(?:stock|share)\s+(?:of|price)?\s*([A-Z]{1,5})', raw)
+            symbol = m.group(1) if m else "AAPL"
+            return _plan([_step("get_stock_price", symbol=symbol)], f"Stock: {symbol}")
+
+        # WIKIPEDIA
+        if RE_WIKI.search(t) and not RE_WIKI_OPEN.search(t):
+            q = re.sub(r'\b(wikipedia|wiki|who is|what is)\b', '', t).strip(' ?')
+            if q:
+                return _plan([_step("search_wikipedia", query=q)], f"Wikipedia: {q}")
+
+        # FOREX
+        if RE_FOREX.search(t):
+            m = re.search(r'([A-Z]{3})\s+to\s+([A-Z]{3})', raw)
+            if m:
+                return _plan([_step("get_currency_rate", from_cur=m.group(1), to_cur=m.group(2))], f"Forex: {m.group(1)} to {m.group(2)}")
+            return _plan([_step("get_forex_rates", base="USD")], "Forex rates")
+
+        # PASSWORD
+        if RE_PASS.search(t):
+            m = re.search(r'(\d+)', t)
+            length = int(m.group(1)) if m else 16
+            return _plan([_step("generate_password", length=length)], f"Generate {length}-char password")
+
+        # NUMBER FACT
+        if RE_NUMFACT.search(t):
+            m = re.search(r'(\d+)', t)
+            n = int(m.group(1)) if m else None
+            return _plan([_step("get_number_fact", number=n)], "Number fact")
+
+        # SYSTEM INFO
+        if RE_SYSINFO.search(t):
+            return _plan([_step("get_system_info")], "System info")
+
+        # BATTERY
+        if RE_BATTERY.search(t):
+            return _plan([_step("get_battery")], "Battery status")
+
+        # WIFI
+        if RE_WIFI.search(t):
+            return _plan([_step("get_wifi_info")], "WiFi info")
+
+        # PING
+        if RE_PING.search(t):
+            m = re.search(r'ping\s+([a-zA-Z0-9.\-]+)', t)
+            host = m.group(1) if m else "google.com"
+            return _plan([_step("ping", host=host)], f"Ping {host}")
+
+        # VOLUME
+        if RE_VOLUME.search(t):
+            if re.search(r'\bmute\b', t):
+                return _plan([_step("mute_volume")], "Mute volume")
+            if re.search(r'\b(volume up|increase volume|louder)\b', t):
+                return _plan([_step("volume_up")], "Volume up")
+            if re.search(r'\b(volume down|decrease volume|quieter)\b', t):
+                return _plan([_step("volume_down")], "Volume down")
+            m = re.search(r'(\d+)', t)
+            if m:
+                return _plan([_step("set_volume", level=int(m.group(1)))], f"Set volume to {m.group(1)}%")
+
+        # REMINDER
+        if RE_REMIND.search(t):
+            m_msg = re.search(r'remind me\s+(?:to\s+)?(.+?)\s+(?:in|after)\s+(\d+)', t)
+            if m_msg:
+                return _plan([_step("set_reminder", message=m_msg.group(1), seconds=int(m_msg.group(2)))], f"Reminder: {m_msg.group(1)}")
+
+        # DATE/TIME
+        if RE_DATETIME.search(t):
+            return _plan([_step("get_datetime")], "Current date and time")
+
+        # NOTIFICATION
+        if RE_NOTIFY.search(t):
+            m = re.search(r'(?:notify|alert|notification)\s+(?:me\s+)?(?:that\s+)?(.+)', t)
+            msg = m.group(1).strip() if m else "NeuroAI notification"
+            return _plan([_step("show_notification", title="NeuroAI", message=msg)], f"Notify: {msg}")
+
+        # LOCK / SLEEP / SHUTDOWN / RESTART
+        if RE_LOCK.search(t):
+            return _plan([_step("lock_screen")], "Lock screen")
+        if RE_SLEEP.search(t):
+            return _plan([_step("sleep_pc")], "Sleep PC")
+        if RE_SHUTDOWN.search(t):
+            return _plan([_step("shutdown", delay=0)], "Shutdown PC")
+        if RE_RESTART.search(t):
+            return _plan([_step("restart", delay=0)], "Restart PC")
+
+        # MAPS
+        if RE_MAPS.search(t):
+            m = re.search(r'(?:maps|directions|navigate to|location of)\s+(.+)', t)
+            loc = m.group(1).strip() if m else ""
+            return _plan([_step("open_google_maps", location=loc)], f"Maps: {loc}")
+
+        # OPEN TRANSLATE
+        if RE_TRANSLATE_OPEN.search(t):
+            return _plan([_step("open_google_translate")], "Open Google Translate")
 
         return None
 

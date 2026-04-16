@@ -106,7 +106,7 @@ export default function CommandInput({ onRun, loading }) {
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
             }}
-            placeholder="Tell JARVIS what to do...  or click 🎤 and speak"
+            placeholder="Tell Neuro what to do...  or click Mic and speak"
             rows={1}
             disabled={loading}
             className="flex-1 bg-transparent text-jarvis-text placeholder-jarvis-muted/40 text-sm font-mono resize-none outline-none leading-relaxed"

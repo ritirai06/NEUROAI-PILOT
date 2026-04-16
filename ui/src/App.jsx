@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
-import { Brain, Cpu, Activity, Zap, Wifi, WifiOff } from 'lucide-react'
+import { Brain, Cpu, Activity, Zap, Wifi, WifiOff, Newspaper, Bell, BellOff } from 'lucide-react'
 import CommandInput, { speakText } from './components/CommandInput'
 import StepTracker   from './components/StepTracker'
 import LogsPanel     from './components/LogsPanel'
 import Sidebar       from './components/Sidebar'
+import NewsPanel     from './components/NewsPanel'
+import NotificationToast from './components/NotificationToast'
 
 const WS_URL = 'ws://localhost:8000/ws'
 const ts = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -109,6 +111,7 @@ export default function App() {
   const [loading,     setLoading]     = useState(false)
   const [showLogs,    setShowLogs]    = useState(true)
   const [showSidebar, setShowSidebar] = useState(true)
+  const [showNews,    setShowNews]    = useState(false)
   const [logs,        setLogs]        = useState([])
   const [steps,       setSteps]       = useState([])
   const [summary,     setSummary]     = useState('')
@@ -117,6 +120,9 @@ export default function App() {
   const [context,     setContext]     = useState({})
   const [time,        setTime]        = useState(new Date())
   const [cmdCount,    setCmdCount]    = useState(0)
+  const [stats,       setStats]       = useState(null)
+  const [notifications, setNotifications] = useState([])
+  const [notifEnabled,  setNotifEnabled]  = useState(() => localStorage.getItem('neuro-notif') !== 'off')
   const wsRef = useRef(null)
 
   useEffect(() => {
@@ -128,6 +134,13 @@ export default function App() {
     const poll = () => fetch('/status').then(r => r.json()).then(d => setTemporal(d.temporal)).catch(() => {})
     poll()
     const t = setInterval(poll, 10000)
+    return () => clearInterval(t)
+  }, [])
+
+  useEffect(() => {
+    const pollStats = () => fetch('/stats').then(r => r.json()).then(setStats).catch(() => {})
+    pollStats()
+    const t = setInterval(pollStats, 3000)
     return () => clearInterval(t)
   }, [])
 
@@ -163,6 +176,12 @@ export default function App() {
         setHistory(p => [{ text: d._input || '', result: d.message, ts: ts() }, ...p.slice(0, 49)])
         fetch('/context').then(r => r.json()).then(setContext).catch(() => {})
         if (localStorage.getItem('neuro-tts') !== 'off' && d.message) speakText(d.message)
+      } else if (d.type === 'news_notification') {
+        if (notifEnabled) {
+          const notif = { id: Date.now() + Math.random(), ...d }
+          setNotifications(p => [notif, ...p.slice(0, 7)])
+          addLog({ type: 'info', message: `📰 News: ${d.articles?.[0]?.title?.slice(0, 60)}` })
+        }
       }
     }
     wsRef.current = ws
@@ -204,6 +223,24 @@ export default function App() {
       <Particles />
       <CursorGlow />
 
+      {/* News Panel overlay */}
+      <AnimatePresence>
+        {showNews && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+            onClick={e => { if (e.target === e.currentTarget) setShowNews(false) }}
+          >
+            <NewsPanel onClose={() => setShowNews(false)} />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Notification toasts */}
+      <NotificationToast
+        notifications={notifications}
+        onDismiss={id => setNotifications(p => p.filter(n => n.id !== id))}
+        onDismissAll={() => setNotifications([])}
+      />
+
       {/* Sidebar */}
       <AnimatePresence>
         {showSidebar && (
@@ -214,7 +251,7 @@ export default function App() {
             transition={{ type: 'spring', stiffness: 280, damping: 28 }}
             className="relative z-10 flex-shrink-0"
           >
-            <Sidebar history={history} context={context} onCommand={runCommand} />
+            <Sidebar history={history} context={context} onCommand={runCommand} stats={stats} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -353,12 +390,88 @@ export default function App() {
               <Activity size={11} />
               LOGS
             </motion.button>
+
+            {/* News toggle */}
+            <motion.button
+              onClick={() => setShowNews(v => !v)}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              className="btn-jarvis flex items-center gap-1.5 text-xs font-mono px-2.5 py-1.5 rounded border transition"
+              style={{
+                borderColor: showNews ? 'rgba(0,212,255,0.4)' : 'rgba(10,32,64,1)',
+                color: showNews ? '#00d4ff' : '#3a5a7a',
+                background: showNews ? 'rgba(0,212,255,0.06)' : 'transparent',
+              }}
+            >
+              <Newspaper size={11} />
+              NEWS
+            </motion.button>
+
+            {/* Notification bell */}
+            <motion.button
+              onClick={() => {
+                const next = !notifEnabled
+                setNotifEnabled(next)
+                localStorage.setItem('neuro-notif', next ? 'on' : 'off')
+                fetch('/notifications/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) })
+              }}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              className="relative btn-jarvis p-1.5 rounded border border-jarvis-border transition"
+            >
+              {notifEnabled
+                ? <Bell size={13} style={{ color: '#00ff88' }} />
+                : <BellOff size={13} style={{ color: '#3a5a7a' }} />
+              }
+              {notifications.length > 0 && notifEnabled && (
+                <motion.span
+                  initial={{ scale: 0 }} animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full text-xs flex items-center justify-center font-mono"
+                  style={{ background: '#ff3366', fontSize: 8 }}
+                >
+                  {notifications.length}
+                </motion.span>
+              )}
+            </motion.button>
           </div>
         </motion.header>
 
         {/* ── MAIN CONTENT ── */}
         <div className="flex flex-1 overflow-hidden">
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            {/* Stats bar */}
+            {stats && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="flex items-center gap-4 px-4 py-1 border-b border-jarvis-border/50 text-xs font-mono text-jarvis-muted/50 flex-shrink-0 overflow-x-auto"
+              >
+                <span className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-jarvis-cyan/40">CPU</span>
+                  <span style={{ color: stats.cpu > 80 ? '#ff3366' : stats.cpu > 50 ? '#ffaa00' : '#00ff88' }}>{stats.cpu}%</span>
+                  <div className="w-12 h-1 rounded-full bg-jarvis-border overflow-hidden">
+                    <motion.div className="h-full rounded-full" animate={{ width: `${stats.cpu}%` }}
+                      style={{ background: stats.cpu > 80 ? '#ff3366' : stats.cpu > 50 ? '#ffaa00' : '#00ff88' }} />
+                  </div>
+                </span>
+                <span className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-jarvis-cyan/40">RAM</span>
+                  <span style={{ color: stats.ram > 85 ? '#ff3366' : stats.ram > 60 ? '#ffaa00' : '#00d4ff' }}>{stats.ram}%</span>
+                  <div className="w-12 h-1 rounded-full bg-jarvis-border overflow-hidden">
+                    <motion.div className="h-full rounded-full bg-jarvis-cyan" animate={{ width: `${stats.ram}%` }} />
+                  </div>
+                </span>
+                {stats.battery !== null && (
+                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="text-jarvis-cyan/40">{stats.charging ? '⚡' : '🔋'}</span>
+                    <span style={{ color: stats.battery < 20 ? '#ff3366' : '#00ff88' }}>{stats.battery}%</span>
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-jarvis-cyan/40">↑</span>
+                  <span>{stats.net_sent_mb}MB</span>
+                  <span className="text-jarvis-cyan/40">↓</span>
+                  <span>{stats.net_recv_mb}MB</span>
+                </span>
+              </motion.div>
+            )}
             <CommandInput onRun={runCommand} loading={loading} />
             <div className="flex-1 overflow-y-auto px-4 py-3">
               <StepTracker steps={steps} summary={summary} result={result} loading={loading} />

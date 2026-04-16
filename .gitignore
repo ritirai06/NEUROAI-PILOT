@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+env/
+*.egg-info/
+
+# Node
+ui/node_modules/
+ui/dist/
+
+# Database
+memory/*.db
+
+# Logs
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Photos / screenshots captured at runtime
+photo_*.jpg
+screenshot*.png
+video_*.avi
+qrcode.png
+
+# Wheel files
+*.whl
+
+# Env secrets
+.env
