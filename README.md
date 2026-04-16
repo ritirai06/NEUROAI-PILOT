@@ -1,6 +1,6 @@
 # 🧠 NeuroAI v3.0 — Jarvis-like Desktop AI Agent
 
-> A production-ready, locally-running AI agent that understands natural language and voice commands, executes real desktop actions, and shows live execution in a futuristic Iron Man Jarvis UI — powered by **Ollama**, **Temporal**, **Playwright**, **OpenCV**, and **FastAPI**.
+> A production-ready, locally-running AI agent that understands natural language and voice commands, executes real desktop actions, shows live execution in a futuristic Iron Man Jarvis UI, and delivers real-time news across 12 fields — powered by **Ollama**, **Temporal**, **Playwright**, **OpenCV**, and **FastAPI**.
 
 ---
 
@@ -17,6 +17,14 @@ JARVIS:
 🗣 Voice response: "Playing Best Of Arijit Singh 2024"
 ```
 
+```
+🎤 You speak: "Law news"
+JARVIS: 📰 LAW NEWS:
+  • Supreme Court rules on privacy case [Reuters]
+  • New data protection bill passed [BBC]
+  ...
+```
+
 ---
 
 ## 🏗️ Architecture
@@ -27,7 +35,7 @@ Voice / Text Input
         ▼
 ┌─────────────────────────────────┐
 │        Command Planner          │
-│  1. Smart Rule Parser (0ms)     │  ← handles 90% instantly
+│  1. Smart Rule Parser (0ms)     │  ← handles 95% instantly
 │  2. Ollama LLM fallback (30s)   │  ← llama3.2:3b
 └──────────────┬──────────────────┘
                │  JSON Plan
@@ -35,7 +43,7 @@ Voice / Text Input
 ┌─────────────────────────────────┐
 │     Temporal Workflow Engine    │  ← retry, timeout, state
 │  • NeuroAIPlanWorkflow          │
-│  • Activities (19 actions)      │
+│  • Activities (160+ actions)    │
 │  • Retry policy (3 attempts)    │
 │  • Falls back to Direct Exec    │
 └──────┬──────────────────────────┘
@@ -43,7 +51,8 @@ Voice / Text Input
        ├──► Browser Tools   (Playwright Chromium)
        ├──► OS Tools        (subprocess + psutil)
        ├──► Camera Tools    (OpenCV)
-       └──► API Tools       (weather, news)
+       ├──► API Tools       (weather, news, crypto, stocks)
+       └──► News Engine     (Google News RSS — 12 categories)
               │
               ▼
 ┌─────────────────────────────────┐
@@ -57,6 +66,9 @@ Voice / Text Input
 │  React + Framer Motion          │
 │  Real-time WebSocket streaming  │
 │  Voice input + TTS output       │
+│  Live News Panel (12 categories)│
+│  Popup Notifications            │
+│  Live CPU/RAM/Battery Stats     │
 └─────────────────────────────────┘
 ```
 
@@ -67,7 +79,7 @@ Voice / Text Input
 ```
 NEUROAI/
 │
-├── main.py                    # FastAPI server + WebSocket + lifespan
+├── main.py                    # FastAPI server + WebSocket + news push loop
 ├── launch.bat                 # ONE-CLICK launcher (all services)
 ├── start.bat                  # Alternative launcher (separate windows)
 ├── temporal.exe               # Temporal CLI (bundled, Windows)
@@ -75,29 +87,29 @@ NEUROAI/
 ├── .env
 │
 ├── agent/
-│   ├── planner.py             # Rule parser + Ollama LLM fallback
+│   ├── planner.py             # Rule parser (95% instant) + Ollama LLM fallback
 │   ├── executor.py            # Direct step executor (Temporal fallback)
 │   ├── memory.py              # SQLite: history, context, preferences
 │   └── scheduler.py          # Daily task scheduler (HH:MM)
 │
 ├── temporal/
 │   ├── workflow.py            # NeuroAIPlanWorkflow (sequential steps)
-│   ├── activities.py          # 19 Temporal activities wrapping all tools
+│   ├── activities.py          # Temporal activities wrapping all tools
 │   ├── worker.py              # Temporal worker process
 │   └── client.py              # Workflow trigger + stream results
 │
 ├── tools/
 │   ├── browser_tools.py       # Playwright: YouTube, Google, websites
 │   ├── system_tools.py        # OS: open/close apps, screenshot, shell
-│   ├── camera_tools.py        # OpenCV: webcam, photo capture
-│   └── api_tools.py           # HTTP: weather (wttr.in), news (RSS)
+│   ├── camera_tools.py        # OpenCV: webcam, photo capture (auto-close)
+│   └── api_tools.py           # HTTP: weather, news, crypto, stocks, forex...
 │
 ├── voice/
 │   ├── stt.py                 # Backend STT (sounddevice + Google)
 │   └── tts.py                 # Backend TTS (pyttsx3, daemon thread)
 │
 ├── mcp/
-│   ├── tool_registry.py       # Central action → function map
+│   ├── tool_registry.py       # Central action → function map (160+ tools)
 │   └── server.py              # MCP protocol endpoints
 │
 ├── config/
@@ -107,21 +119,19 @@ NEUROAI/
 │   └── agent_memory.db        # SQLite database (auto-created)
 │
 ├── logs/                      # Runtime logs (auto-created)
-│   ├── backend.log
-│   ├── frontend.log
-│   ├── worker.log
-│   └── temporal.log
 │
 └── ui/                        # React + Tailwind + Framer Motion
     └── src/
-        ├── App.jsx             # Main shell, WebSocket, particles, cursor glow
+        ├── App.jsx             # Main shell, WebSocket, stats bar, news
         ├── index.css           # Jarvis theme, animations, neon effects
         └── components/
-            ├── CommandInput.jsx  # Input box + TTS toggle
-            ├── VoiceInput.jsx    # Real-time STT (Web Speech API)
-            ├── StepTracker.jsx   # Live step execution display
-            ├── LogsPanel.jsx     # Real-time execution logs
-            └── Sidebar.jsx       # History, tools, scheduler
+            ├── CommandInput.jsx      # Input box + TTS toggle
+            ├── VoiceInput.jsx        # Real-time STT (Web Speech API)
+            ├── StepTracker.jsx       # Live step execution display
+            ├── LogsPanel.jsx         # Real-time execution logs
+            ├── Sidebar.jsx           # History, tools, news settings, stats
+            ├── NewsPanel.jsx         # Live news dashboard (12 categories)
+            └── NotificationToast.jsx # Popup news notifications
 ```
 
 ---
@@ -137,6 +147,7 @@ NEUROAI/
 | Camera | OpenCV | Webcam access, photo capture |
 | OS | subprocess + psutil | App launch/kill, shell commands |
 | Memory | SQLite | History, context, preferences |
+| News | Google News RSS | 12 real-world category feeds |
 | Voice STT | Web Speech API (browser) | Real-time voice-to-text |
 | Voice STT | Google Speech Recognition | Backend fallback STT |
 | Voice TTS | Browser speechSynthesis | Instant voice responses |
@@ -144,33 +155,110 @@ NEUROAI/
 | Frontend | React 18 + Vite | Modern chat UI |
 | Styling | Tailwind CSS | Jarvis dark theme |
 | Animation | Framer Motion | Smooth UI transitions |
-| Realtime | WebSocket | Live step streaming |
+| Realtime | WebSocket | Live step + news streaming |
 
 ---
 
-## ✅ Supported Actions (19 total)
+## ✅ Supported Actions (160+ total)
 
+### Core Actions
 | Action | Description | Example |
 |--------|-------------|---------|
 | `open_website` | Navigate to URL | `open_website(url="github.com")` |
-| `search_youtube` | Search YouTube directly | `search_youtube(query="Arijit Singh")` |
+| `search_youtube` | Search YouTube | `search_youtube(query="Arijit Singh")` |
 | `click_first_video` | Auto-click first result | `click_first_video()` |
-| `search_google` | Google search + results | `search_google(query="Python")` |
-| `click` | Click element by text/selector | `click(target="Sign in")` |
-| `scroll` | Scroll page | `scroll(direction="down", amount=3)` |
-| `send_email` | Open Gmail compose | `send_email(to="x@y.com")` |
-| `scrape` | Extract page content | `scrape(url="example.com")` |
+| `search_google` | Google search | `search_google(query="Python")` |
 | `open_app` | Launch desktop app | `open_app(app="vscode")` |
 | `close_app` | Kill running process | `close_app(app="spotify")` |
 | `run_command` | Execute shell command | `run_command(cmd="ipconfig")` |
 | `take_screenshot` | Capture full screen | `take_screenshot()` |
-| `wait` | Pause execution | `wait(seconds=2)` |
-| `respond` | Return text response | `respond(message="Hello!")` |
 | `open_camera` | Open webcam preview | `open_camera()` |
-| `click_photo` | Capture photo | `click_photo()` |
-| `close_camera` | Close webcam | `close_camera()` |
-| `get_weather` | Live weather via wttr.in | `get_weather(city="London")` |
-| `get_news` | Top headlines via RSS | `get_news(topic="AI")` |
+| `click_photo` | Capture photo + auto-close | `click_photo()` |
+| `get_weather` | Live weather | `get_weather(city="London")` |
+| `get_news` | Headlines via RSS | `get_news(topic="AI")` |
+
+### News Actions (NEW)
+| Action | Description |
+|--------|-------------|
+| `get_news_by_category` | News for specific field (law, health, etc.) |
+| `get_daily_digest` | Multi-category morning digest |
+| `get_breaking_news` | Top breaking news |
+
+### Advanced API Actions (NEW)
+| Action | Description |
+|--------|-------------|
+| `get_crypto_price` | Bitcoin, Ethereum, etc. |
+| `get_stock_price` | Live stock prices |
+| `get_forex_rates` | Currency exchange rates |
+| `get_earthquake_data` | Recent significant earthquakes |
+| `generate_password` | Secure random password |
+| `define_word` | Dictionary definition |
+| `translate_text` | Translate to any language |
+| `search_wikipedia` | Wikipedia summary |
+| `get_github_user` | GitHub profile info |
+| `get_qr_code` | Generate QR code |
+| `get_joke` / `get_dad_joke` | Random jokes |
+| `get_quote` | Inspirational quotes |
+| `get_nasa_apod` | NASA astronomy picture |
+| `get_moon_phase` | Current moon phase |
+| `get_country_info` | Country details |
+| `get_air_quality` | AQI for any city |
+
+### System Actions (NEW)
+| Action | Description |
+|--------|-------------|
+| `get_system_info` | CPU, RAM, disk, uptime |
+| `get_battery` | Battery status |
+| `get_wifi_info` | WiFi details |
+| `ping` | Ping any host |
+| `set_volume` / `mute_volume` | Volume control |
+| `set_brightness` | Screen brightness |
+| `lock_screen` / `sleep_pc` | Power management |
+| `show_notification` | Windows toast notification |
+| `set_reminder` | Timed reminder |
+| `calculate` | Math expressions |
+| `copy_to_clipboard` | Clipboard operations |
+| `get_datetime` | Current date and time |
+
+---
+
+## 📰 News System (NEW)
+
+### 12 Real-World Categories
+| Category | Voice Command |
+|----------|--------------|
+| Technology | `"tech news"` |
+| Health & Medicine | `"health news"` |
+| Law & Legal | `"law news"` |
+| Education | `"education news"` |
+| Finance & Economy | `"finance news"` |
+| Science & Research | `"science news"` |
+| Sports | `"sports news"` |
+| Politics | `"politics news"` |
+| Business | `"business news"` |
+| Entertainment | `"entertainment news"` |
+| World | `"world news"` |
+| India | `"india news"` |
+
+### News Features
+- **Live News Panel** — click NEWS button in header → full dashboard with 12 tabs
+- **Popup Notifications** — auto-push news alerts via WebSocket
+- **Configurable intervals** — 15 / 30 / 60 minutes
+- **Per-category toggles** — enable/disable any category
+- **Daily Digest** — `"daily digest"` → multi-category morning briefing
+- **Breaking News** — `"breaking news"` → top headlines instantly
+
+---
+
+## 📊 Live Stats Bar (NEW)
+
+Always visible below the header:
+- **CPU %** — color coded (green → yellow → red)
+- **RAM %** — with used/total MB
+- **Battery** — with charging indicator
+- **Network** — upload/download totals
+
+Stats tab in sidebar with quick action buttons.
 
 ---
 
@@ -184,51 +272,23 @@ NEUROAI/
 | Node.js | 18+ | https://nodejs.org |
 | Ollama | Latest | https://ollama.ai |
 
----
-
 ### Step 1 — Install Ollama & Pull Model
 
 ```bash
-# Download from https://ollama.ai and install
 ollama pull llama3.2:3b
-
-# Verify:
 ollama run llama3.2:3b "say hello"
 ```
 
-> Use `llama3.2:3b` (~2.3GB RAM). For better quality use `llama3` (~4.6GB RAM).
-
----
-
-### Step 2 — Open Project
-
-```bash
-cd "c:\Users\anshy\Desktop\AI PROJECT\NEUROAI"
-```
-
----
-
-### Step 3 — Python Virtual Environment
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
----
-
-### Step 4 — Install Python Dependencies
+### Step 2 — Install Python Dependencies
 
 ```bash
 python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt --only-binary=:all:
-playwright install chromium
+python -m playwright install chromium
 pip install opencv-python --only-binary=:all:
 ```
 
----
-
-### Step 5 — Install Frontend Dependencies
+### Step 3 — Install Frontend Dependencies
 
 ```bash
 cd ui
@@ -236,43 +296,27 @@ npm install
 cd ..
 ```
 
----
+### Step 4 — Launch Everything
 
-### Step 6 — Launch Everything
-
-**Option A — One click (recommended):**
 ```bash
 launch.bat
 ```
+
 This single file:
 - Kills any processes on ports 8000 / 7233 / 3000
-- Starts Temporal server → Worker → Backend → Frontend
+- Starts Temporal → Worker → Backend → Frontend
 - Health-checks backend before declaring ready
 - Saves all logs to `logs/` folder
-- Press any key to stop all services
 
-**Option B — Manual (4 terminals):**
-
+**Manual (4 terminals):**
 ```bash
-# Terminal 1 — Temporal Server
-temporal.exe server start-dev
-
-# Terminal 2 — Temporal Worker
-venv\Scripts\activate
-python -m temporal.worker
-
-# Terminal 3 — Backend
-venv\Scripts\activate
-python main.py
-
-# Terminal 4 — Frontend
-cd ui
-npm run dev
+temporal.exe server start-dev          # Terminal 1
+python -m temporal.worker              # Terminal 2
+python main.py                         # Terminal 3
+cd ui && npm run dev                   # Terminal 4
 ```
 
----
-
-### Step 7 — Open the UI
+### Step 5 — Open the UI
 
 ```
 http://localhost:3000
@@ -280,49 +324,111 @@ http://localhost:3000
 
 ---
 
-## 🎤 Voice Features
+## 🔧 API Endpoints
 
-### Real-time Voice Input (Browser)
-1. Click the **🎤 microphone button**
-2. Speak your command
-3. Text appears **live in the input box** as you speak (interim results)
-4. Speech ends → text is ready to send
-5. Click **Send** or enable **AUTO** mode to send automatically
-
-**Language support:** EN-IN · HI (Hindi) · EN-US — toggle with the `EN/HI/US` button
-
-**How it works:** Uses the browser's built-in **Web Speech API** with `continuous: true` and `interimResults: true` — no backend call needed, works instantly.
-
-### Voice Response (TTS)
-- Every command result is **spoken aloud** automatically
-- Uses browser `speechSynthesis` (prefers Microsoft Zira / Google voice)
-- Toggle **TTS ON/OFF** button in the input bar
-- Preference saved to localStorage
-
-### Backend Voice (Fallback)
-- If browser mic is unavailable, falls back to backend STT
-- Records 5 seconds via `sounddevice` → transcribes via Google Speech API
-- Backend TTS via `pyttsx3` runs in a dedicated daemon thread
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/status` | Temporal + Ollama status |
+| `GET` | `/stats` | Live CPU / RAM / battery / network |
+| `POST` | `/chat` | Send command, get plan + results |
+| `WS` | `/ws` | Real-time WebSocket streaming + news push |
+| `GET` | `/history` | Command history |
+| `DELETE` | `/history` | Clear history |
+| `GET` | `/tools` | List all 160+ tools |
+| `GET` | `/context` | Current execution state |
+| `POST` | `/voice/listen` | Record + transcribe (5s) |
+| `POST` | `/voice/speak` | Speak text via backend TTS |
+| `POST` | `/schedule` | Schedule a daily task |
+| `GET` | `/schedules` | List scheduled tasks |
+| `GET` | `/news/categories` | List all news categories |
+| `GET` | `/news/{category}` | Articles for a category |
+| `GET` | `/news/digest/all` | Multi-category digest |
+| `GET` | `/news/breaking/now` | Breaking news |
+| `GET` | `/notifications/settings` | Get notification config |
+| `POST` | `/notifications/settings` | Update notification config |
+| `POST` | `/notifications/push` | Manually push news to all clients |
 
 ---
 
-## 🔁 Temporal Workflow Engine
+## 🧪 Example Commands
 
-NeuroAI uses **Temporal** for production-grade execution:
-
+### YouTube & Music
 ```
-Plan → NeuroAIPlanWorkflow
-         │
-         ├── Step 1: open_website  (timeout: 60s, retry: 3x)
-         ├── Step 2: search_youtube (timeout: 60s, retry: 3x)
-         └── Step 3: click_first_video (timeout: 30s, retry: 3x)
+Open Chrome and play Arijit Singh
+Play lofi music
+Watch Python tutorial on YouTube
 ```
 
-**Retry policy:** 3 attempts, exponential backoff (2s → 4s → 8s)
+### News (All Fields)
+```
+Law news
+Health news
+Education news
+Finance news
+Science news
+Sports news
+Politics news
+Breaking news
+Daily digest
+India news
+```
 
-**Fallback:** If Temporal is not running, NeuroAI automatically falls back to the direct executor — everything still works.
+### Finance & Crypto
+```
+Bitcoin price
+Ethereum price
+Stock price AAPL
+USD to INR rate
+Forex rates
+```
 
-**Temporal UI:** http://localhost:8233 (workflow history, retries, state)
+### Knowledge
+```
+Define serendipity
+Translate hello to Hindi
+Wikipedia Python programming
+Who is Elon Musk
+```
+
+### System
+```
+System info
+Battery status
+WiFi info
+Ping google.com
+Set volume 50
+Lock screen
+What time is it
+Remind me to drink water in 30
+```
+
+### Fun
+```
+Tell me a joke
+Dad joke
+Chuck Norris joke
+Give me advice
+Get trivia
+Generate password 20
+```
+
+### Camera
+```
+Open camera
+Open camera and take photo     ← camera auto-closes after photo
+Take a screenshot
+```
+
+### Apps & Browser
+```
+Open VS Code
+Open calculator
+Close Spotify
+Search Python tutorials on Google
+Go to github.com
+Open Gmail
+Open incognito
+```
 
 ---
 
@@ -335,165 +441,15 @@ Plan → NeuroAIPlanWorkflow
 | Cursor glow | Soft radial gradient follows mouse |
 | Scan beam | Cyan line sweeps top to bottom every 6s |
 | Arc reactor logo | 3 spinning rings, pulses faster when executing |
-| Holographic text | "NEUROAI" cycles through gradient colors |
 | Step cards | Slide in with spring physics, shimmer while running |
-| Typing output | Step results animate in character by character |
 | Progress bar | Animated fill with glow effect |
-| Idle hologram | Large arc reactor with orbiting dot when waiting |
+| Live stats bar | CPU / RAM / Battery / Network — updates every 3s |
+| NEWS button | Opens full news dashboard with 12 category tabs |
+| Bell button | Toggle news popup notifications on/off |
+| News toasts | Slide-in popup with auto-dismiss + progress bar |
+| Stats tab | Sidebar panel with animated bars + quick actions |
 | Real-time logs | Color-coded entries slide in from right |
-| Data streams | Vertical light streams in logs panel background |
-| HUD corners | Corner brackets on all panels, expand on hover |
 | Voice waveform | Real mic volume visualized as animated bars |
-
----
-
-## 🧪 Example Commands
-
-### YouTube & Music
-```
-Open Chrome and play Arijit Singh
-Play lofi music
-Watch Python tutorial on YouTube
-Play Bollywood songs
-```
-
-### Browser
-```
-Search Python tutorials on Google
-Go to github.com
-Open Gmail
-Search AI news
-```
-
-### Apps
-```
-Open VS Code
-Open calculator
-Open Notepad
-Close Spotify
-```
-
-### Camera
-```
-Open camera
-Open camera and take photo
-Take a screenshot
-```
-
-### APIs
-```
-What's the weather in London?
-Weather in Mumbai
-Get latest tech news
-Get news about AI
-```
-
-### Shell
-```
-Run command: ipconfig
-Run command: dir
-Run command: systeminfo
-```
-
-### Multi-step
-```
-Open Chrome and play Arijit Singh
-Open camera and click picture
-Search Python on Google and click first link
-```
-
----
-
-## 🔧 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/status` | Temporal + Ollama status |
-| `POST` | `/chat` | Send command, get plan + results |
-| `WS` | `/ws` | Real-time WebSocket streaming |
-| `GET` | `/history` | Command history |
-| `DELETE` | `/history` | Clear history |
-| `GET` | `/tools` | List all 19 tools |
-| `GET` | `/context` | Current execution state |
-| `POST` | `/voice/listen` | Record + transcribe (5s, backend) |
-| `POST` | `/voice/speak` | Speak text via backend TTS |
-| `POST` | `/schedule` | Schedule a daily task |
-| `GET` | `/schedules` | List scheduled tasks |
-
----
-
-## 🧠 How the Planner Works
-
-### Layer 1 — Smart Rule Parser (instant, 0ms)
-Handles ~90% of commands with zero LLM calls:
-
-```
-"Open Chrome and play Arijit Singh"
-  → RE_PLAY matches → youtube_steps("Arijit Singh")
-
-"weather in Mumbai"
-  → RE_WEATHER matches → get_weather(city="Mumbai")
-
-"run chome and serach youtube play song"  ← typos OK
-  → APP_ALIASES: "chome" → "chrome"
-  → RE_PLAY → youtube_steps("song")
-```
-
-### Layer 2 — Ollama LLM (complex commands, 30s timeout)
-For commands the rules can't handle:
-- Model: `llama3.2:3b`
-- Hard timeout: 30 seconds
-- Context: last 2 commands for follow-up understanding
-- Falls back to rule parser if LLM fails
-
-### JSON Plan Format
-```json
-{
-  "steps": [
-    {"action": "open_website",      "params": {"url": "https://www.youtube.com"}},
-    {"action": "search_youtube",    "params": {"query": "Arijit Singh"}},
-    {"action": "click_first_video", "params": {}}
-  ],
-  "summary": "Play Arijit Singh on YouTube"
-}
-```
-
----
-
-## 🔊 Voice Setup
-
-**Default (Browser Web Speech API — no install needed):**
-- Works in Chrome and Edge
-- Real-time interim results
-- Supports Hindi + English
-
-**Backend STT (Google — requires internet):**
-```bash
-# Already installed via requirements.txt
-# Set in .env:
-STT_ENGINE=google
-```
-
-**Backend STT (Whisper — offline):**
-```bash
-# Requires Visual C++ Build Tools
-pip install faster-whisper
-# Set in .env:
-STT_ENGINE=whisper
-```
-
----
-
-## 🧠 Switching LLM Models
-
-Edit `agent/planner.py` line 8:
-
-```python
-MODEL = "llama3.2:3b"   # default — ~2.3GB RAM
-MODEL = "llama3"         # better  — ~4.6GB RAM
-MODEL = "phi3"           # fastest — ~1.5GB RAM
-MODEL = "mistral"        # balanced — ~3GB RAM
-```
 
 ---
 
@@ -501,16 +457,38 @@ MODEL = "mistral"        # balanced — ~3GB RAM
 
 | Issue | Fix |
 |-------|-----|
-| Port 8000 in use | Run `launch.bat` — it kills old processes automatically |
+| Port 8000 in use | Run `launch.bat` — kills old processes automatically |
 | Temporal not found | `temporal.exe` is bundled — run `launch.bat` |
 | Worker can't connect | Start `temporal.exe server start-dev` first |
 | Browser mic denied | Click 🔒 in address bar → allow microphone |
-| No speech detected | Speak clearly, check mic in Windows Sound settings |
 | `OpenCV not installed` | `pip install opencv-python --only-binary=:all:` |
 | Ollama error 500 | Free 2.5GB RAM or use `llama3.2:3b` |
 | `pydantic-core` build fails | Use `pip install --only-binary=:all:` |
 | Frontend on port 3001 | Port 3000 was busy — open `http://localhost:3001` |
-| TTS not speaking | Toggle TTS ON in input bar, check system volume |
+| News not loading | Check internet connection — uses Google News RSS |
+| venv activation fails | Use `python main.py` directly (system Python works) |
+
+---
+
+## 🧠 How the Planner Works
+
+### Layer 1 — Smart Rule Parser (instant, 0ms)
+Handles ~95% of commands with zero LLM calls using regex rules:
+
+```
+"law news"          → get_news_by_category(law)
+"bitcoin price"     → get_crypto_price(bitcoin)
+"define serendipity"→ define_word(serendipity)
+"set volume 70"     → set_volume(70)
+"ping google.com"   → ping(google.com)
+"daily digest"      → get_daily_digest()
+"generate password" → generate_password(16)
+```
+
+### Layer 2 — Ollama LLM (complex commands, 30s timeout)
+- Model: `llama3.2:3b`
+- Context: last 2 commands for follow-up understanding
+- Falls back to rule parser if LLM fails
 
 ---
 
@@ -526,76 +504,23 @@ All data stored in `memory/agent_memory.db` (SQLite, auto-created):
 
 ---
 
-## 🛠️ Adding Custom Tools
-
-1. Add function to `tools/system_tools.py` or a new file:
-```python
-def my_tool(param: str) -> str:
-    return f"Done: {param}"
-```
-
-2. Register in `mcp/tool_registry.py`:
-```python
-from tools.my_file import my_tool
-"my_tool": my_tool,
-```
-
-3. Add Temporal activity in `temporal/activities.py`:
-```python
-@activity.defn(name="my_tool")
-async def act_my_tool(param: str) -> str:
-    import asyncio
-    return await asyncio.to_thread(my_tool, param)
-```
-
-4. Add to planner rules in `agent/planner.py` (optional):
-```python
-if "my keyword" in t:
-    return _plan([_step("my_tool", param="value")], "Summary")
-```
-
----
-
-## 📦 requirements.txt
-
-```
-fastapi==0.115.12        # Web framework
-uvicorn[standard]==0.34.3 # ASGI server
-httpx==0.28.1            # Async HTTP (Ollama calls)
-pydantic==2.12.5         # Data validation
-pydantic-core==2.41.5    # Pydantic core
-playwright==1.52.0       # Browser automation
-psutil==7.0.0            # Process management
-pywin32==311             # Windows API
-pyttsx3==2.90            # Text-to-speech
-sounddevice==0.5.1       # Audio recording
-soundfile==0.12.1        # Audio file I/O
-SpeechRecognition==3.10.4 # Google STT
-python-dotenv==1.1.0     # .env loading
-python-multipart==0.0.20 # Form data
-temporalio==1.7.1        # Temporal workflow SDK
-opencv-python            # Camera/webcam
-numpy                    # Required by sounddevice + opencv
-```
-
----
-
 ## 🏆 What Makes NeuroAI v3.0 Different
 
 | Feature | NeuroAI v3.0 | Typical AI Agent |
 |---------|-------------|-----------------|
 | Runs 100% locally | ✅ | ❌ Cloud API |
 | Instant response | ✅ Rule-based (0ms) | ❌ Always LLM |
+| 160+ tools | ✅ | ❌ 5–10 tools |
+| Real-world news (12 fields) | ✅ Live RSS | ❌ None |
+| News popup notifications | ✅ WebSocket push | ❌ None |
+| Live system stats | ✅ CPU/RAM/Battery | ❌ None |
 | Temporal workflows | ✅ Retry + state | ❌ Fire and forget |
 | Real-time voice STT | ✅ Live interim text | ❌ Record then transcribe |
 | Hindi + English voice | ✅ | ❌ English only |
-| Voice TTS response | ✅ Browser + backend | ❌ Rarely |
 | Iron Man Jarvis UI | ✅ Framer Motion | ❌ Basic chat |
 | Typo tolerance | ✅ "chome" → chrome | ❌ Exact match |
-| Camera support | ✅ OpenCV | ❌ Rarely |
-| YouTube auto-play | ✅ Clicks first result | ❌ Just opens URL |
+| Camera auto-close | ✅ After photo | ❌ Manual |
 | One-click launch | ✅ `launch.bat` | ❌ Multiple terminals |
-| Low RAM mode | ✅ Works with 1GB free | ❌ Crashes |
 
 ---
 
@@ -618,6 +543,7 @@ MIT License — free to use, modify, and distribute.
 - **SQLite** — embedded database
 - **Web Speech API** — real-time voice recognition
 - **pyttsx3** — offline text-to-speech
+- **Google News RSS** — live news feeds
 
 ---
 
