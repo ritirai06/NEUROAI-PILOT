@@ -28,3 +28,7 @@ python-multipart==0.0.20
 
 # Temporal workflow engine
 temporalio==1.7.1
+
+# Desktop automation
+pyautogui
+pygetwindow

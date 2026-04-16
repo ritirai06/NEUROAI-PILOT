@@ -52,6 +52,14 @@ from tools.api_tools import (
     get_news_by_category, get_daily_digest, get_breaking_news, get_news_articles,
 )
 from tools.camera_tools import open_camera, click_photo, close_camera, record_video, get_camera_info
+from tools.desktop_tools import (
+    focus_window, list_open_windows, close_window, maximize_window, minimize_window,
+    hotkey, desktop_type, desktop_press, desktop_click, desktop_double_click,
+    desktop_right_click, desktop_scroll, select_all, copy, paste, undo, save_file, new_file,
+    calculator_compute, notepad_write, notepad_save_as,
+    app_type_and_enter, open_and_type, search_in_start_menu, open_run_dialog,
+    switch_window, show_desktop, take_desktop_screenshot, get_screen_size, get_mouse_pos,
+)
 
 
 class ToolRegistry:
@@ -61,7 +69,7 @@ class ToolRegistry:
 
     def _register(self):
         self._tools = {
-            # ── OS / System ──────────────────────────────────────────────────
+            # System
             "open_app":             open_app,
             "close_app":            close_app,
             "run_command":          run_command,
@@ -100,15 +108,15 @@ class ToolRegistry:
             "mouse_double_click":   mouse_double_click,
             "right_click":          right_click,
             "scroll_mouse":         scroll_mouse,
-            # ── Clipboard ────────────────────────────────────────────────────
+            # Clipboard
             "copy_to_clipboard":    copy_to_clipboard,
             "get_clipboard":        get_clipboard,
-            # ── Volume ───────────────────────────────────────────────────────
+            # Volume
             "set_volume":           set_volume,
             "mute_volume":          mute_volume,
             "volume_up":            volume_up,
             "volume_down":          volume_down,
-            # ── Files ────────────────────────────────────────────────────────
+            # Files
             "create_file":          create_file,
             "read_file":            read_file,
             "delete_file":          delete_file,
@@ -121,15 +129,15 @@ class ToolRegistry:
             "get_file_info":        get_file_info,
             "search_in_file":       search_in_file,
             "word_count":           word_count,
-            # ── Network ──────────────────────────────────────────────────────
+            # Network
             "get_ip_address":       get_ip_address,
             "ping":                 ping,
             "get_wifi_info":        get_wifi_info,
             "get_network_speed":    get_network_speed,
-            # ── Keyboard ─────────────────────────────────────────────────────
+            # Keyboard
             "press_key":            press_key,
             "type_text":            type_text,
-            # ── Browser ──────────────────────────────────────────────────────
+            # Browser
             "open_website":         open_website,
             "search_youtube":       search_youtube,
             "click_first_video":    click_first_video,
@@ -183,7 +191,7 @@ class ToolRegistry:
             "count_elements":       count_elements,
             "get_element_text":     get_element_text,
             "open_incognito":       open_incognito,
-            # ── API ──────────────────────────────────────────────────────────
+            # API
             "get_weather":          get_weather,
             "get_weather_detailed": get_weather_detailed,
             "get_news":             get_news,
@@ -227,12 +235,43 @@ class ToolRegistry:
             "get_news_by_category": get_news_by_category,
             "get_daily_digest":     get_daily_digest,
             "get_breaking_news":    get_breaking_news,
-            # ── Camera ───────────────────────────────────────────────────────
+            # Camera
             "open_camera":          open_camera,
             "click_photo":          click_photo,
             "close_camera":         close_camera,
             "record_video":         record_video,
             "get_camera_info":      get_camera_info,
+            # Desktop Automation
+            "focus_window":         focus_window,
+            "list_open_windows":    list_open_windows,
+            "close_window":         close_window,
+            "maximize_window":      maximize_window,
+            "minimize_window":      minimize_window,
+            "hotkey":               hotkey,
+            "desktop_type":         desktop_type,
+            "desktop_press":        desktop_press,
+            "desktop_click":        desktop_click,
+            "desktop_double_click": desktop_double_click,
+            "desktop_right_click":  desktop_right_click,
+            "desktop_scroll":       desktop_scroll,
+            "select_all":           select_all,
+            "copy":                 copy,
+            "paste":                paste,
+            "undo":                 undo,
+            "save_file":            save_file,
+            "new_file":             new_file,
+            "calculator_compute":   calculator_compute,
+            "notepad_write":        notepad_write,
+            "notepad_save_as":      notepad_save_as,
+            "app_type_and_enter":   app_type_and_enter,
+            "open_and_type":        open_and_type,
+            "search_in_start_menu": search_in_start_menu,
+            "open_run_dialog":      open_run_dialog,
+            "switch_window":        switch_window,
+            "show_desktop":         show_desktop,
+            "take_desktop_screenshot": take_desktop_screenshot,
+            "get_screen_size":      get_screen_size,
+            "get_mouse_pos":        get_mouse_pos,
         }
 
     def get(self, name: str):
@@ -280,6 +319,12 @@ class ToolRegistry:
                          "get_number_fact","get_word_of_day","get_chuck_norris_joke","get_dad_joke",
                          "get_news_by_category","get_daily_digest","get_breaking_news"],
             "Camera":   ["open_camera","click_photo","close_camera","record_video","get_camera_info"],
+            "Desktop":  ["focus_window","list_open_windows","close_window","maximize_window","minimize_window",
+                         "hotkey","desktop_type","desktop_press","desktop_click","desktop_double_click",
+                         "desktop_right_click","desktop_scroll","select_all","copy","paste","undo",
+                         "save_file","new_file","calculator_compute","notepad_write","notepad_save_as",
+                         "app_type_and_enter","open_and_type","search_in_start_menu","open_run_dialog",
+                         "switch_window","show_desktop","take_desktop_screenshot","get_screen_size","get_mouse_pos"],
         }
         return [{"name": k, "group": g}
                 for g, names in groups.items()

@@ -53,6 +53,19 @@ SUPPORTED ACTIONS:
 - get_screen_resolution params: {}
 - set_brightness    params: {level}
 - get_startup_programs params: {}
+- calculator_compute params: {expression}
+- notepad_write      params: {text}
+- focus_window       params: {title_keyword}
+- desktop_type       params: {text}
+- desktop_press      params: {key}
+- desktop_click      params: {x, y}
+- hotkey             params: {keys}
+- app_type_and_enter params: {app_title, text}
+- open_run_dialog    params: {command}
+- search_in_start_menu params: {query}
+- switch_window      params: {}
+- show_desktop       params: {}
+- list_open_windows  params: {}
 - respond           params: {message}
 
 RULES:
@@ -126,6 +139,15 @@ RE_RESOLUTION = re.compile(r'\b(screen resolution|display resolution|resolution)
 RE_RECORD  = re.compile(r'\b(record video|record camera|video record)\b')
 RE_CAMINFO = re.compile(r'\b(camera info|webcam info|camera details)\b')
 RE_INCOG   = re.compile(r'\b(incognito|private.*tab|private.*window)\b')
+RE_CALC_APP= re.compile(r'\b(calculator|calc)\b')
+RE_NOTEPAD = re.compile(r'\b(notepad|text editor|write.*note|note.*write)\b')
+RE_FOCUS   = re.compile(r'\b(focus|switch to|bring up|go to window)\b')
+RE_WINLIST = re.compile(r'\b(list.*windows|open windows|show windows)\b')
+RE_HOTKEY  = re.compile(r'\b(press|hotkey|shortcut|keyboard shortcut)\b')
+RE_STARTMENU=re.compile(r'\b(start menu|windows search|win search)\b')
+RE_RUNDIAG = re.compile(r'\b(run dialog|win\+r|winr)\b')
+RE_SHOWDESK= re.compile(r'\b(show desktop|minimize all|win\+d)\b')
+RE_ALTTAB  = re.compile(r'\b(alt tab|switch window|next window)\b')
 RE_CALC    = re.compile(r'\b(calculate|compute|what is|solve|math)\b')
 RE_DEFINE  = re.compile(r'\b(define|meaning of|what does.*mean|definition)\b')
 RE_TRANS   = re.compile(r'\b(translate|translation)\b')
@@ -352,6 +374,28 @@ class Planner:
             m = re.search(r'(\d+)', t)
             level = int(m.group(1)) if m else 70
             return _plan([_step("set_brightness", level=level)], f"Set brightness to {level}%")
+
+        # CALCULATOR APP — must be before RE_OPEN check
+        if RE_CALC_APP.search(t):
+            expr_t = re.sub(r'\b(open|calculator|calc|and|compute|calculate|please|add|do)\b', ' ', t)
+            expr_t = re.sub(r'\bplus\b', '+', expr_t)
+            expr_t = re.sub(r'\bsubtract\b|\bminus\b', '-', expr_t)
+            expr_t = re.sub(r'\bmultiply\b|\btimes\b', '*', expr_t)
+            expr_t = re.sub(r'\bdivide\b|\bdivided by\b', '/', expr_t)
+            expr_t = expr_t.replace(' ', '')
+            m = re.search(r'(\d[\d\.]*[\+\-\*\/][\d\.][\d\.\+\-\*\/]*)', expr_t)
+            expr = m.group(1) if m else ""
+            if expr:
+                return _plan([_step("calculator_compute", expression=expr)], f"Calculate {expr} in Calculator")
+            return _plan([_step("open_app", app="calculator")], "Open Calculator")
+
+        # NOTEPAD — must be before RE_OPEN check
+        if RE_NOTEPAD.search(t):
+            m = re.search(r'(?:write|type|note)\s+["\']?(.+?)["\']?$', t)
+            text = m.group(1).strip() if m else ""
+            if text:
+                return _plan([_step("notepad_write", text=text)], f"Write in Notepad: {text[:30]}")
+            return _plan([_step("open_app", app="notepad")], "Open Notepad")
 
         # RUN COMMAND
         m = re.search(r'(?:run|execute)\s+(?:command\s*[:\-]?\s*)(.+)', t)
@@ -583,6 +627,37 @@ class Planner:
         # OPEN TRANSLATE
         if RE_TRANSLATE_OPEN.search(t):
             return _plan([_step("open_google_translate")], "Open Google Translate")
+
+        # FOCUS WINDOW
+        if RE_FOCUS.search(t):
+            m = re.search(r'(?:focus|switch to|bring up|go to window)\s+(.+)', t)
+            win = m.group(1).strip() if m else ""
+            if win:
+                return _plan([_step("focus_window", title_keyword=win)], f"Focus: {win}")
+
+        # LIST WINDOWS
+        if RE_WINLIST.search(t):
+            return _plan([_step("list_open_windows")], "List open windows")
+
+        # SHOW DESKTOP
+        if RE_SHOWDESK.search(t):
+            return _plan([_step("show_desktop")], "Show desktop")
+
+        # ALT TAB
+        if RE_ALTTAB.search(t):
+            return _plan([_step("switch_window")], "Switch window")
+
+        # START MENU SEARCH
+        if RE_STARTMENU.search(t):
+            m = re.search(r'(?:search|find|look for)\s+(.+)', t)
+            q = m.group(1).strip() if m else ""
+            return _plan([_step("search_in_start_menu", query=q)], f"Start menu: {q}")
+
+        # WIN+R RUN DIALOG
+        if RE_RUNDIAG.search(t):
+            m = re.search(r'(?:run|open)\s+(.+)', t)
+            cmd = m.group(1).strip() if m else ""
+            return _plan([_step("open_run_dialog", command=cmd)], f"Run: {cmd}")
 
         return None
 
