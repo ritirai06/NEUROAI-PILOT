@@ -14,13 +14,9 @@ pyautogui.PAUSE = 0.05
 # ── Window management ─────────────────────────────────────────────────────────
 
 def focus_window(title_keyword: str) -> str:
-    """Bring a window to foreground by partial title match."""
     try:
-        wins = gw.getWindowsWithTitle(title_keyword)
-        if not wins:
-            # try partial match
-            all_wins = gw.getAllWindows()
-            wins = [w for w in all_wins if title_keyword.lower() in w.title.lower() and w.title.strip()]
+        all_wins = gw.getAllWindows()
+        wins = [w for w in all_wins if title_keyword.lower() in w.title.lower() and w.title.strip()]
         if not wins:
             return f"Window '{title_keyword}' not found"
         w = wins[0]
@@ -34,7 +30,6 @@ def focus_window(title_keyword: str) -> str:
 
 
 def list_open_windows() -> str:
-    """List all visible open windows."""
     try:
         wins = [w.title for w in gw.getAllWindows() if w.title.strip()]
         return "Open windows:\n" + "\n".join(f"• {t}" for t in wins[:20])
@@ -43,7 +38,6 @@ def list_open_windows() -> str:
 
 
 def close_window(title_keyword: str) -> str:
-    """Close a window by title keyword."""
     try:
         wins = [w for w in gw.getAllWindows() if title_keyword.lower() in w.title.lower()]
         if not wins:
@@ -79,7 +73,6 @@ def minimize_window(title_keyword: str) -> str:
 # ── Keyboard automation ───────────────────────────────────────────────────────
 
 def hotkey(*keys) -> str:
-    """Press a keyboard shortcut. e.g. hotkey('ctrl','c')"""
     try:
         pyautogui.hotkey(*keys)
         return f"Hotkey: {'+'.join(keys)}"
@@ -88,7 +81,6 @@ def hotkey(*keys) -> str:
 
 
 def desktop_type(text: str, interval: float = 0.04) -> str:
-    """Type text into the currently focused window."""
     try:
         pyautogui.write(str(text), interval=interval)
         return f"Typed: {text}"
@@ -97,7 +89,6 @@ def desktop_type(text: str, interval: float = 0.04) -> str:
 
 
 def desktop_press(key: str) -> str:
-    """Press a single key. e.g. 'enter', 'tab', 'escape', 'backspace'"""
     try:
         pyautogui.press(key)
         return f"Pressed: {key}"
@@ -172,81 +163,63 @@ def new_file() -> str:
 
 def calculator_compute(expression: str) -> str:
     """
-    Open Windows Calculator, type an expression, get the result.
-    Supports: +  -  *  /  and numbers.
-    Example: calculator_compute("2+2") → "4"
+    Instantly compute expression via Python eval AND open Windows Calculator
+    to show the result visually. Always returns the result.
     """
+    # Clean expression
+    expr = (expression.replace(" ", "")
+                      .replace("x", "*").replace("X", "*")
+                      .replace("\u00d7", "*").replace("\u00f7", "/"))
+    allowed = set("0123456789+-*/.%()")
+    safe = "".join(c for c in expr if c in allowed)
+
+    # ── Step 1: Compute instantly via Python eval ──────────────────────────
     try:
-        # Open calculator
+        result = eval(safe)
+        if isinstance(result, float) and result == int(result):
+            result = int(result)
+        result_str = str(result)
+    except Exception as e:
+        return f"Invalid expression '{expression}': {e}"
+
+    # ── Step 2: Open Calculator and type it visually (best effort) ─────────
+    try:
         subprocess.Popen("calc.exe", shell=True)
         time.sleep(1.5)
-
-        # Focus it
         focus_window("Calculator")
         time.sleep(0.3)
 
-        # Clear any previous input
-        pyautogui.hotkey("alt", "F4") if False else None  # don't close
-        pyautogui.press("escape")
-        time.sleep(0.1)
-
-        # Map expression chars to key presses
         key_map = {
             "+": "+", "-": "-", "*": "*", "/": "/",
-            "(": "(", ")": ")",
             "0":"0","1":"1","2":"2","3":"3","4":"4",
-            "5":"5","6":"6","7":"7","8":"8","9":"9",
-            ".": ".",
+            "5":"5","6":"6","7":"7","8":"8","9":"9","." : ".",
         }
-
-        expr = expression.replace(" ", "").replace("x", "*").replace("×", "*").replace("÷", "/")
-
-        for ch in expr:
+        for ch in safe:
             if ch in key_map:
                 pyautogui.press(key_map[ch])
                 time.sleep(0.05)
-
-        # Press Enter to calculate
         pyautogui.press("enter")
-        time.sleep(0.3)
+    except Exception:
+        pass  # UI is optional — result already computed above
 
-        # Read result from clipboard via Ctrl+C on the display
-        pyautogui.hotkey("ctrl", "c")
-        time.sleep(0.2)
-
-        import pyperclip
-        result = pyperclip.paste().strip()
-
-        return f"Calculator: {expression} = {result}" if result else f"Calculator: {expression} computed"
-
-    except Exception as e:
-        # Fallback: just calculate in Python
-        try:
-            allowed = set("0123456789+-*/.() ")
-            safe = "".join(c for c in expression if c in allowed)
-            result = eval(safe)
-            return f"Calculator: {expression} = {result}"
-        except Exception:
-            return f"Calculator error: {e}"
+    return f"Calculator: {expression} = {result_str}"
 
 
 # ── Notepad automation ────────────────────────────────────────────────────────
 
 def notepad_write(text: str) -> str:
-    """Open Notepad and type text into it."""
     try:
         subprocess.Popen("notepad.exe", shell=True)
         time.sleep(1.2)
         focus_window("Notepad")
         time.sleep(0.3)
         pyautogui.write(text, interval=0.03)
-        return f"Notepad: typed {len(text)} characters"
+        return f"Notepad: typed '{text[:50]}'"
     except Exception as e:
         return f"Notepad error: {e}"
 
 
 def notepad_save_as(filename: str) -> str:
-    """Save current Notepad file with a name."""
     try:
         focus_window("Notepad")
         pyautogui.hotkey("ctrl", "shift", "s")
@@ -263,7 +236,6 @@ def notepad_save_as(filename: str) -> str:
 # ── App-specific interactions ─────────────────────────────────────────────────
 
 def app_type_and_enter(app_title: str, text: str) -> str:
-    """Focus an app window, type text, press Enter."""
     try:
         result = focus_window(app_title)
         if "not found" in result:
@@ -277,7 +249,6 @@ def app_type_and_enter(app_title: str, text: str) -> str:
 
 
 def open_and_type(app: str, text: str) -> str:
-    """Open an app, wait for it, then type text."""
     try:
         subprocess.Popen(app, shell=True)
         time.sleep(1.5)
@@ -288,7 +259,6 @@ def open_and_type(app: str, text: str) -> str:
 
 
 def search_in_start_menu(query: str) -> str:
-    """Press Win key and search for something."""
     try:
         pyautogui.press("win")
         time.sleep(0.6)
@@ -300,7 +270,6 @@ def search_in_start_menu(query: str) -> str:
 
 
 def open_run_dialog(command: str) -> str:
-    """Open Win+R and run a command."""
     try:
         pyautogui.hotkey("win", "r")
         time.sleep(0.5)
@@ -312,7 +281,6 @@ def open_run_dialog(command: str) -> str:
 
 
 def switch_window() -> str:
-    """Alt+Tab to switch to next window."""
     try:
         pyautogui.hotkey("alt", "tab")
         return "Switched window (Alt+Tab)"
@@ -321,7 +289,6 @@ def switch_window() -> str:
 
 
 def show_desktop() -> str:
-    """Win+D to show desktop."""
     try:
         pyautogui.hotkey("win", "d")
         return "Showing desktop"
@@ -330,7 +297,6 @@ def show_desktop() -> str:
 
 
 def take_desktop_screenshot(filename: str = "desktop_screenshot.png") -> str:
-    """Take screenshot using pyautogui."""
     import os
     try:
         path = os.path.join(os.getcwd(), filename)
