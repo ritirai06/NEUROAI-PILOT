@@ -301,6 +301,36 @@ export default function StepTracker({ steps, summary, result, loading }) {
 
   if (!total && !loading && !result) return <IdleHologram />
 
+  if (loading && !total && !result) return (
+    <div className="flex flex-col items-center justify-center h-full gap-6">
+      <div className="relative w-20 h-20 flex items-center justify-center">
+        {[0, 1, 2].map(i => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full border border-jarvis-cyan"
+            style={{ inset: `${i * 8}px`, opacity: 0.2 + i * 0.2 }}
+            animate={{ rotate: i % 2 === 0 ? 360 : -360 }}
+            transition={{ repeat: Infinity, duration: 2 + i, ease: 'linear' }}
+          />
+        ))}
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
+          transition={{ repeat: Infinity, duration: 1 }}
+        >
+          <Cpu size={20} className="neon-cyan" />
+        </motion.div>
+      </div>
+      <motion.p
+        className="text-sm font-mono tracking-widest"
+        style={{ color: '#00d4ff' }}
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ repeat: Infinity, duration: 1.2 }}
+      >
+        PLANNING...
+      </motion.p>
+    </div>
+  )
+
   return (
     <div className="space-y-3 max-w-2xl mx-auto w-full pb-4">
 

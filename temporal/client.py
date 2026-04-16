@@ -2,17 +2,18 @@
 Temporal Client — triggers NeuroAI workflows and streams step results.
 Used by FastAPI to start workflows and poll for updates.
 """
-import asyncio
 import os
-import uuid
 from typing import AsyncGenerator
 
-from temporalio.client import Client, WorkflowHandle
+from temporalio.client import Client
 from temporal.workflow import NeuroAIPlanWorkflow, TASK_QUEUE
+from agent.executor import Executor
+from mcp.tool_registry import ToolRegistry
 
 TEMPORAL_HOST = os.getenv("TEMPORAL_HOST", "localhost:7233")
 
 _client: Client | None = None
+_stream_executor: Executor | None = None
 
 
 async def get_client() -> Client:
@@ -37,40 +38,16 @@ async def run_plan(plan: dict) -> dict:
 
 async def run_plan_stream(plan: dict) -> AsyncGenerator[dict, None]:
     """
-    Execute a plan via Temporal and yield step updates in real-time.
-    Since Temporal doesn't push events, we simulate streaming by
-    running the workflow and yielding results as they complete.
-    Falls back to direct execution if Temporal is unavailable.
+    Yield step updates in real time for the UI.
+
+    Temporal is still used for durable workflow execution elsewhere, but the
+    current workflow integration cannot emit per-step updates until the whole
+    workflow finishes. For the live WebSocket UI we prefer genuine streaming,
+    so this path uses the direct executor.
     """
-    client = await get_client()
-    workflow_id = f"neuroai-{uuid.uuid4().hex[:8]}"
-    steps = plan.get("steps", [])
+    global _stream_executor
+    if _stream_executor is None:
+        _stream_executor = Executor(registry=ToolRegistry())
 
-    # Yield "running" for each step immediately
-    for i, step in enumerate(steps):
-        yield {
-            "index":  i,
-            "action": step.get("action", ""),
-            "params": step.get("params", {}),
-            "status": "running",
-        }
-
-    # Execute full workflow
-    handle: WorkflowHandle = await client.start_workflow(
-        NeuroAIPlanWorkflow.run,
-        plan,
-        id=workflow_id,
-        task_queue=TASK_QUEUE,
-    )
-
-    result = await handle.result()
-
-    # Yield final results
-    for r in result.get("results", []):
-        yield {
-            "index":  r["index"],
-            "action": r["action"],
-            "params": steps[r["index"]].get("params", {}) if r["index"] < len(steps) else {},
-            "status": r["status"],
-            "output": r.get("output", ""),
-        }
+    async for update in _stream_executor.execute_stream(plan):
+        yield update

@@ -2,7 +2,7 @@
 Planner v3 — converts natural language into explicit multi-step JSON plans.
 YouTube: open_website → search_youtube → click_first_video (3 visible steps)
 """
-import json, re, httpx
+import asyncio, json, re, httpx
 from agent.memory import Memory
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -243,7 +243,7 @@ class Planner:
         if result:
             return result
         try:
-            return await self._llm(user_input)
+            return await asyncio.wait_for(self._llm(user_input), timeout=8.0)
         except Exception:
             return self._unknown(user_input)
 
@@ -659,7 +659,26 @@ class Planner:
             cmd = m.group(1).strip() if m else ""
             return _plan([_step("open_run_dialog", command=cmd)], f"Run: {cmd}")
 
-        return None
+        # OPEN GMAIL / GITHUB / MAPS / WIKIPEDIA (bare open)
+        if RE_OPEN.search(t):
+            if re.search(r'\bgmail\b', t):
+                return _plan([_step("open_gmail")], "Open Gmail")
+            if re.search(r'\bgithub\b', t):
+                return _plan([_step("open_github")], "Open GitHub")
+            if re.search(r'\b(maps|google maps)\b', t):
+                return _plan([_step("open_google_maps", location="")], "Open Google Maps")
+            if re.search(r'\bwikipedia\b', t):
+                return _plan([_step("open_wikipedia")], "Open Wikipedia")
+            # Generic open — search google as fallback
+            q = _clean_query(t)
+            if q and len(q) > 1:
+                return _plan([_step("search_google", query=q)], f"Search: {q}")
+
+        # CATCH-ALL — never call LLM, respond instantly
+        return _plan(
+            [_step("respond", message=f"I heard: '{raw}'. Try: 'open chrome', 'weather in Delhi', 'tech news', 'bitcoin price', 'open camera'")],
+            "Unknown command"
+        )
 
     async def _llm(self, user_input: str) -> dict:
         history = self.memory.get_recent(2)
@@ -668,9 +687,9 @@ class Planner:
             "model": MODEL,
             "prompt": f"{SYSTEM_PROMPT}\n\n{ctx}User: {user_input}",
             "stream": False, "format": "json",
-            "options": {"temperature": 0.1, "num_predict": 400, "num_ctx": 1024},
+            "options": {"temperature": 0.1, "num_predict": 200, "num_ctx": 512},
         }
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=8) as client:
             resp = await client.post(OLLAMA_URL, json=payload)
             data = resp.json()
             if "error" in data:
@@ -700,9 +719,6 @@ class Planner:
         return _plan([_step("respond", message=raw[:300])], raw[:60])
 
     def _unknown(self, text: str) -> dict:
-        r = self._rules(text)
-        if r:
-            return r
         return _plan([_step("respond", message=(
             "I couldn't understand that. Try:\n"
             "• 'Open Chrome and play Arijit Singh'\n"

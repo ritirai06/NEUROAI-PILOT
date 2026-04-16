@@ -56,34 +56,27 @@ class Executor:
             if self.context.get("current_app") == app:
                 return {"status": "skipped", "output": f"{app} already open"}
 
+        # Browser actions get longer timeout, API calls get 12s, others 30s
+        if action in ("open_website", "search_youtube", "click_first_video", "search_google", "click_button", "click"):
+            timeout = 30.0
+        elif action in ("open_app", "run_command", "take_screenshot", "open_camera", "click_photo"):
+            timeout = 20.0
+        else:
+            timeout = 12.0
+
         try:
             if asyncio.iscoroutinefunction(fn):
-                output = await fn(**params)
+                output = await asyncio.wait_for(fn(**params), timeout=timeout)
             else:
-                output = await asyncio.to_thread(fn, **params)
+                output = await asyncio.wait_for(asyncio.to_thread(fn, **params), timeout=timeout)
 
-            # Update context
             self._update_context(action, params, output)
             return {"status": "success", "output": output}
 
+        except asyncio.TimeoutError:
+            return {"status": "error", "output": f"{action} timed out after {timeout}s"}
         except Exception as e:
-            err = str(e)
-            # open_website failure is non-critical — search_youtube works independently
-            if action == "open_website":
-                return {"status": "error", "output": err}
-            # Retry once for other browser actions
-            if action in ("search_youtube", "click_first_video", "search_google", "click"):
-                try:
-                    await asyncio.sleep(1)
-                    if asyncio.iscoroutinefunction(fn):
-                        output = await fn(**params)
-                    else:
-                        output = await asyncio.to_thread(fn, **params)
-                    self._update_context(action, params, output)
-                    return {"status": "success", "output": output}
-                except Exception as e2:
-                    return {"status": "error", "output": str(e2)}
-            return {"status": "error", "output": err}
+            return {"status": "error", "output": str(e)}
 
     def _update_context(self, action: str, params: dict, output: str):
         self.context["last_action"] = action

@@ -150,7 +150,11 @@ async def ws_endpoint(websocket: WebSocket):
             user_input = data.get("message", "")
 
             await send({"type": "status", "message": "Planning..."})
-            plan = await planner.plan(user_input)
+            try:
+                plan = await asyncio.wait_for(planner.plan(user_input), timeout=35.0)
+            except asyncio.TimeoutError:
+                await send({"type": "done", "message": "Request timed out. Try a simpler command.", "_input": user_input})
+                continue
             await send({"type": "plan", "data": plan})
 
             outputs = []
