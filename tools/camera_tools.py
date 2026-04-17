@@ -1,10 +1,12 @@
 """
-Camera tools — OpenCV webcam capture.
+Camera tools.
+Prefers opening the native camera app visibly; falls back to OpenCV preview.
 """
 import os
-import threading
 import subprocess
 import sys
+import tempfile
+import threading
 from datetime import datetime
 
 _cap = None
@@ -12,20 +14,24 @@ _window_thread = None
 
 
 def open_camera() -> str:
-    """Open webcam in visible window."""
+    """Open camera visibly on screen."""
     global _window_thread
 
-    script = '''
+    # Primary path on Windows: native Camera app.
+    if os.name == "nt":
+        try:
+            subprocess.Popen(
+                ["cmd", "/c", "start", "", "microsoft.windows.camera:"],
+                creationflags=subprocess.CREATE_NEW_CONSOLE
+            )
+            return "OK Camera app opened"
+        except Exception:
+            pass
+
+    # Fallback path: OpenCV live preview in separate process.
+    script = r"""
 import cv2
 import sys
-import time
-
-try:
-    import win32gui
-    import win32con
-    HAS_WIN32 = True
-except:
-    HAS_WIN32 = False
 
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -35,43 +41,33 @@ if not cap.isOpened():
 window_name = "NeuroAI Camera - Press Q to close"
 cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
-if HAS_WIN32:
-    time.sleep(0.3)
-    hwnd = win32gui.FindWindow(None, window_name)
-    if hwnd:
-        win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
-        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
-                              win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0,
-                              win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
-        win32gui.SetForegroundWindow(hwnd)
-
 while True:
     ret, frame = cap.read()
     if not ret:
         break
     cv2.imshow(window_name, frame)
-    k = cv2.waitKey(1) & 0xFF
-    if k == ord('q'):
+    if (cv2.waitKey(1) & 0xFF) == ord("q"):
         break
 
 cap.release()
 cv2.destroyAllWindows()
-'''
-    import tempfile
-    tmp = tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w")
-    tmp.write(script)
-    tmp.close()
+"""
+    try:
+        tmp = tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w", encoding="utf-8")
+        tmp.write(script)
+        tmp.close()
 
-    def _run():
-        subprocess.Popen(
-            [sys.executable, tmp.name],
-            creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
-        )
+        def _run():
+            subprocess.Popen(
+                [sys.executable, tmp.name],
+                creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == "nt" else 0
+            )
 
-    _window_thread = threading.Thread(target=_run, daemon=True)
-    _window_thread.start()
-    return "✅ Camera opened — press Q to close"
+        _window_thread = threading.Thread(target=_run, daemon=True)
+        _window_thread.start()
+        return "OK Camera preview opened - press Q to close"
+    except Exception as e:
+        return f"ERROR Camera open failed: {e}"
 
 
 def click_photo(filename: str = None) -> str:
@@ -79,26 +75,26 @@ def click_photo(filename: str = None) -> str:
     try:
         import cv2
     except ImportError:
-        return "❌ OpenCV not installed"
+        return "ERROR OpenCV not installed"
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        return "❌ No camera found"
+        return "ERROR No camera found"
 
     import time
     time.sleep(0.5)
     ret, frame = cap.read()
     cap.release()
-    
+
     if not ret:
-        return "❌ Failed to capture frame"
+        return "ERROR Failed to capture frame"
 
     if not filename:
         filename = f"photo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
 
     path = os.path.join(os.getcwd(), filename)
     cv2.imwrite(path, frame)
-    return f"📸 Photo saved: {path}"
+    return f"Photo saved: {path}"
 
 
 def close_camera() -> str:
@@ -111,8 +107,8 @@ def close_camera() -> str:
             cv2.destroyAllWindows()
         except Exception:
             pass
-        return "✅ Camera closed"
-    return "⚠️ Camera was not open"
+        return "OK Camera closed"
+    return "WARN Camera was not open"
 
 
 def record_video(filename: str = None, duration: int = 5) -> str:
@@ -120,7 +116,7 @@ def record_video(filename: str = None, duration: int = 5) -> str:
     try:
         import cv2
     except ImportError:
-        return "❌ OpenCV not installed"
+        return "ERROR OpenCV not installed"
 
     if not filename:
         filename = f"video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi"
@@ -128,7 +124,7 @@ def record_video(filename: str = None, duration: int = 5) -> str:
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        return "❌ No camera found"
+        return "ERROR No camera found"
 
     fourcc = cv2.VideoWriter_fourcc(*"XVID")
     fps = 20.0
@@ -146,7 +142,7 @@ def record_video(filename: str = None, duration: int = 5) -> str:
 
     cap.release()
     out.release()
-    return f"🎥 Video saved: {path} ({duration}s)"
+    return f"Video saved: {path} ({duration}s)"
 
 
 def get_camera_info() -> str:
@@ -154,7 +150,7 @@ def get_camera_info() -> str:
     try:
         import cv2
     except ImportError:
-        return "❌ OpenCV not installed"
+        return "ERROR OpenCV not installed"
 
     info = []
     for i in range(4):

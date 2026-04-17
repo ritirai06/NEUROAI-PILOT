@@ -22,6 +22,9 @@ from tools.browser_tools import (
     get_page_screenshot_base64, highlight_element, count_elements,
     get_element_text, open_incognito,
 )
+from tools.desktop_tools import (
+    open_website_visible, search_youtube_visible, search_google_visible, click_first_video_visible
+)
 from tools.system_tools import (
     open_app, close_app, run_command, take_screenshot, wait, respond,
     copy_to_clipboard, get_clipboard,
@@ -61,16 +64,16 @@ def _sync(fn):
 
 # ── Browser activities ────────────────────────────────────────────────────────
 @activity.defn(name="open_website")
-async def act_open_website(url: str) -> str: return await open_website(url)
+async def act_open_website(url: str) -> str: return await asyncio.to_thread(open_website_visible, url)
 
 @activity.defn(name="search_youtube")
-async def act_search_youtube(query: str) -> str: return await search_youtube(query)
+async def act_search_youtube(query: str) -> str: return await asyncio.to_thread(search_youtube_visible, query)
 
 @activity.defn(name="click_first_video")
-async def act_click_first_video() -> str: return await click_first_video()
+async def act_click_first_video() -> str: return await asyncio.to_thread(click_first_video_visible)
 
 @activity.defn(name="search_google")
-async def act_search_google(query: str) -> str: return await search_google(query)
+async def act_search_google(query: str) -> str: return await asyncio.to_thread(search_google_visible, query)
 
 @activity.defn(name="search_bing")
 async def act_search_bing(query: str) -> str: return await search_bing(query)

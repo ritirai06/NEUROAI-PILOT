@@ -4,7 +4,8 @@ import httpx, re, json
 
 async def get_weather(city: str) -> str:
     try:
-        async with httpx.AsyncClient(timeout=6) as c:
+        t = httpx.Timeout(10.0, connect=4.0)
+        async with httpx.AsyncClient(timeout=t) as c:
             r = await c.get(f"https://wttr.in/{city.replace(' ', '+')}?format=3")
             return r.text.strip()
     except Exception as e:

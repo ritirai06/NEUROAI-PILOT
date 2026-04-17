@@ -443,7 +443,7 @@ class Planner:
             app = _find_app(t)
             url = _extract_url(t)
 
-            # Browser app — use Playwright directly, never open_app for chrome
+            # Browser app - keep browser actions explicit (visible execution handled by registry mapping)
             if app in ("chrome", "firefox"):
                 if RE_YOUTUBE.search(t) or RE_PLAY.search(t):
                     q = _clean_query(t)
@@ -498,7 +498,7 @@ class Planner:
         if RE_CALC.search(t):
             expr = re.sub(r'\b(calculate|compute|what is|solve|math)\b', '', t).strip(' ?')
             if expr:
-                return _plan([_step("calculate", expression=expr)], f"Calculate: {expr}")
+                return _plan([_step("calculator_compute", expression=expr)], f"Calculate: {expr}")
 
         # DEFINE WORD
         if RE_DEFINE.search(t):

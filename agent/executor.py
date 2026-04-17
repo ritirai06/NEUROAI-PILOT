@@ -50,19 +50,15 @@ class Executor:
         if not fn:
             return {"status": "error", "output": f"Unknown action: '{action}'"}
 
-        # Skip open_app if app already running (context check)
-        if action == "open_app":
-            app = params.get("app", "")
-            if self.context.get("current_app") == app:
-                return {"status": "skipped", "output": f"{app} already open"}
-
-        # Browser actions get longer timeout, API calls get 12s, others 30s
+        # Browser actions and API actions can be slower on real networks.
         if action in ("open_website", "search_youtube", "click_first_video", "search_google", "click_button", "click"):
             timeout = 30.0
         elif action in ("open_app", "run_command", "take_screenshot", "open_camera", "click_photo"):
             timeout = 20.0
+        elif action.startswith("get_") or action in ("translate_text", "define_word", "search_wikipedia", "calculate", "calculator_compute"):
+            timeout = 35.0
         else:
-            timeout = 12.0
+            timeout = 20.0
 
         try:
             if asyncio.iscoroutinefunction(fn):

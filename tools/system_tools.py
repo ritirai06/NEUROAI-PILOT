@@ -15,6 +15,10 @@ def _apps():
 def open_app(app: str) -> str:
     p, apps = _platform(), _apps()
     key = app.lower().strip()
+    # First, force focus if app window already exists.
+    if WindowManager.focus_existing_window(app, maximize=True):
+        return f"Focused existing {app}"
+
     if key not in apps:
         try:
             launch_visible(key, title_hint=app, maximize=True)
@@ -46,15 +50,10 @@ def run_command(cmd: str) -> str:
         return f"Error: {e}"
 
 def take_screenshot(filename: str = "screenshot.png") -> str:
-    path = os.path.join(os.getcwd(), filename)
     try:
-        ps = (f'Add-Type -AssemblyName System.Windows.Forms,System.Drawing;'
-              f'$b=New-Object System.Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,'
-              f'[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height);'
-              f'$g=[System.Drawing.Graphics]::FromImage($b);'
-              f'$g.CopyFromScreen(0,0,0,0,$b.Size);'
-              f"$b.Save('{path}');$g.Dispose();$b.Dispose()")
-        subprocess.run(["powershell","-Command",ps], check=True, timeout=10)
+        import pyautogui
+        path = os.path.join(os.getcwd(), filename)
+        pyautogui.screenshot(path)
         return f"Screenshot saved: {path}"
     except Exception as e:
         return f"Screenshot failed: {e}"
@@ -169,7 +168,7 @@ def get_ram_usage() -> str:
 def get_disk_usage(path: str = "/") -> str:
     try:
         if sys.platform.startswith("win"):
-            path = "C:\\"
+            path = "C:\\\\"
         d = psutil.disk_usage(path)
         return (f"Disk ({path}): {d.percent}% used\n"
                 f"Used: {d.used//1024//1024//1024}GB | Free: {d.free//1024//1024//1024}GB | Total: {d.total//1024//1024//1024}GB")
@@ -385,7 +384,7 @@ def show_notification(title: str, message: str) -> str:
 
 def set_wallpaper(path: str) -> str:
     try:
-        ps = f"Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class W{{[DllImport(\"user32.dll\")]public static extern bool SystemParametersInfo(int a,int b,string c,int d);}}'; [W]::SystemParametersInfo(20,0,'{path}',3)"
+        ps = f"Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class W{{[DllImport(\\\"user32.dll\\\")]public static extern bool SystemParametersInfo(int a,int b,string c,int d);}}'; [W]::SystemParametersInfo(20,0,'{path}',3)"
         subprocess.run(["powershell","-Command",ps], timeout=5)
         return f"Wallpaper set: {path}"
     except Exception as e:
@@ -429,14 +428,8 @@ def set_reminder(message: str, seconds: int) -> str:
 # ── Calculator ────────────────────────────────────────────────────────────────
 
 def calculate(expression: str) -> str:
-    try:
-        allowed = set("0123456789+-*/().% ")
-        if not all(c in allowed for c in expression):
-            return "Invalid expression"
-        result = eval(expression)
-        return f"{expression} = {result}"
-    except Exception as e:
-        return f"Calculation error: {e}"
+    from tools.desktop_tools import calculator_compute
+    return calculator_compute(expression)
 
 # ── Text utilities ────────────────────────────────────────────────────────────
 
@@ -575,7 +568,7 @@ def move_mouse(x: int, y: int) -> str:
 def mouse_click(x: int, y: int) -> str:
     try:
         ps = (f"Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;"
-              f"public class M{{[DllImport(\"user32.dll\")]public static extern void mouse_event(int f,int x,int y,int c,int e);}}';"
+              f"public class M{{[DllImport(\\\"user32.dll\\\")]public static extern void mouse_event(int f,int x,int y,int c,int e);}}';"
               f"[M]::mouse_event(0x8001,{x},{y},0,0);[M]::mouse_event(0x8002,{x},{y},0,0)")
         subprocess.run(["powershell","-Command",ps], timeout=5)
         return f"Clicked at ({x}, {y})"
@@ -590,7 +583,7 @@ def mouse_double_click(x: int, y: int) -> str:
 def right_click(x: int, y: int) -> str:
     try:
         ps = (f"Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;"
-              f"public class M{{[DllImport(\"user32.dll\")]public static extern void mouse_event(int f,int x,int y,int c,int e);}}';"
+              f"public class M{{[DllImport(\\\"user32.dll\\\")]public static extern void mouse_event(int f,int x,int y,int c,int e);}}';"
               f"[M]::mouse_event(0x8008,{x},{y},0,0);[M]::mouse_event(0x8010,{x},{y},0,0)")
         subprocess.run(["powershell","-Command",ps], timeout=5)
         return f"Right-clicked at ({x}, {y})"
@@ -601,7 +594,7 @@ def scroll_mouse(direction: str = "down", clicks: int = 3) -> str:
     try:
         delta = -120 * clicks if direction == "down" else 120 * clicks
         ps = (f"Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;"
-              f"public class M{{[DllImport(\"user32.dll\")]public static extern void mouse_event(int f,int x,int y,int c,int e);}}';"
+              f"public class M{{[DllImport(\\\"user32.dll\\\")]public static extern void mouse_event(int f,int x,int y,int c,int e);}}';"
               f"[M]::mouse_event(0x0800,0,0,{delta},0)")
         subprocess.run(["powershell","-Command",ps], timeout=5)
         return f"Scrolled {direction} {clicks} clicks"

@@ -1,18 +1,74 @@
 """
-Desktop automation tools — pyautogui + pygetwindow.
-Real UI interaction: focus windows, type text, click buttons, use calculator, notepad, etc.
+Desktop automation tools using pyautogui + pygetwindow.
+All UI actions are intended to be visible on screen.
 """
+import os
+import random
 import subprocess
 import time
+import urllib.parse
+
 import pyautogui
 import pygetwindow as gw
+
 from tools.window_manager import WindowManager, launch_visible
 
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.05
 
 
-# ── Window management ─────────────────────────────────────────────────────────
+def _human_delay(min_s: float = 0.2, max_s: float = 0.5) -> None:
+    time.sleep(random.uniform(min_s, max_s))
+
+
+def _browser_command(browser: str) -> tuple[str, str]:
+    b = (browser or "chrome").lower().strip()
+    if b == "edge":
+        return "msedge.exe", "edge"
+    if b == "firefox":
+        return "firefox.exe", "firefox"
+    return "chrome.exe", "chrome"
+
+
+def _focus_browser_window(browser_name: str) -> bool:
+    hints = {
+        "chrome": ["Google Chrome", "Chrome"],
+        "edge": ["Microsoft Edge", "Edge"],
+        "firefox": ["Mozilla Firefox", "Firefox"],
+    }.get(browser_name, ["Chrome", "Google Chrome"])
+    for hint in hints:
+        hwnd = WindowManager.find_window_by_title(hint, timeout=1.2)
+        if hwnd and WindowManager.bring_to_front(hwnd):
+            return True
+    return False
+
+
+def _browser_guest_args(browser_name: str) -> list[str]:
+    """
+    Launch in a separate guest/private window so localhost portal tab is not reused.
+    """
+    if browser_name == "edge":
+        return ["--guest", "--new-window", "about:blank"]
+    if browser_name == "firefox":
+        return ["-private-window", "about:blank"]
+    return ["--guest", "--new-window", "about:blank"]
+
+
+def _open_guest_browser_foreground(browser: str = "chrome") -> str:
+    cmd, normalized = _browser_command(browser)
+    args = _browser_guest_args(normalized)
+    try:
+        # Open a fresh guest/private window for web searching tasks.
+        subprocess.Popen([cmd, *args])
+    except Exception:
+        # Fallback if direct spawn fails.
+        launch_visible(f"{cmd} {' '.join(args)}", title_hint=normalized, maximize=True)
+
+    _human_delay(1.4, 2.5)
+    _focus_browser_window(normalized)
+    _human_delay(0.2, 0.4)
+    return normalized
+
 
 def focus_window(title_keyword: str) -> str:
     try:
@@ -33,7 +89,7 @@ def focus_window(title_keyword: str) -> str:
 def list_open_windows() -> str:
     try:
         wins = [w.title for w in gw.getAllWindows() if w.title.strip()]
-        return "Open windows:\n" + "\n".join(f"• {t}" for t in wins[:20])
+        return "Open windows:\n" + "\n".join(f"- {t}" for t in wins[:20])
     except Exception as e:
         return f"Window list error: {e}"
 
@@ -70,8 +126,6 @@ def minimize_window(title_keyword: str) -> str:
     except Exception as e:
         return f"Minimize error: {e}"
 
-
-# ── Keyboard automation ───────────────────────────────────────────────────────
 
 def hotkey(*keys) -> str:
     try:
@@ -160,39 +214,25 @@ def new_file() -> str:
     return "New file"
 
 
-# ── Calculator automation ─────────────────────────────────────────────────────
-
 def calculator_compute(expression: str) -> str:
-    """
-    Compute expression VISUALLY on calculator - shows every step.
-    NO instant computation - simulates real button presses.
-    """
     from tools.visual_calculator import visual_calculator_compute
     return visual_calculator_compute(expression, step_delay=0.3)
 
 
 def calculator_compute_with_voice(expression: str) -> str:
-    """
-    Compute expression visually WITH voice feedback for each step.
-    """
     from tools.visual_calculator import voice_calculator_compute
     return voice_calculator_compute(expression, step_delay=0.3)
 
 
-# ── Notepad automation ────────────────────────────────────────────────────────
-
 def notepad_write(text: str) -> str:
     try:
         launch_visible("notepad.exe", title_hint="Notepad", maximize=False)
-        time.sleep(1.2)
-        
-        # Find and focus notepad
+        _human_delay(1.0, 1.6)
         hwnd = WindowManager.find_window_by_title("Notepad", timeout=2.0)
         if hwnd:
             WindowManager.bring_to_front(hwnd)
-        time.sleep(0.3)
-        
-        pyautogui.write(text, interval=0.03)
+        _human_delay(0.2, 0.5)
+        pyautogui.write(text, interval=random.uniform(0.06, 0.12))
         return f"Notepad: typed '{text[:50]}'"
     except Exception as e:
         return f"Notepad error: {e}"
@@ -212,7 +252,117 @@ def notepad_save_as(filename: str) -> str:
         return f"Save error: {e}"
 
 
-# ── App-specific interactions ─────────────────────────────────────────────────
+def open_website_visible(url: str, browser: str = "chrome") -> str:
+    try:
+        normalized = _open_guest_browser_foreground(browser)
+        target = str(url).strip()
+        if not target.startswith(("http://", "https://", "about:")):
+            target = "https://" + target
+        pyautogui.hotkey("ctrl", "l")
+        _human_delay()
+        pyautogui.write(target, interval=random.uniform(0.06, 0.11))
+        _human_delay()
+        pyautogui.press("enter")
+        _human_delay(0.5, 0.9)
+        return f"Opened in {normalized}: {target}"
+    except Exception as e:
+        return f"Open website error: {e}"
+
+
+def search_duckduckgo_visible(query: str, browser: str = "chrome") -> str:
+    q = urllib.parse.quote_plus(str(query))
+    return open_website_visible(f"https://duckduckgo.com/?q={q}", browser=browser)
+
+
+def open_youtube_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://www.youtube.com", browser=browser)
+
+
+def open_gmail_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://mail.google.com", browser=browser)
+
+
+def open_github_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://github.com", browser=browser)
+
+
+def open_google_maps_visible(location: str = "", browser: str = "chrome") -> str:
+    if location:
+        q = urllib.parse.quote_plus(str(location))
+        return open_website_visible(f"https://www.google.com/maps/search/{q}", browser=browser)
+    return open_website_visible("https://www.google.com/maps", browser=browser)
+
+
+def open_google_translate_visible(text: str = "", target: str = "hi", browser: str = "chrome") -> str:
+    q = urllib.parse.quote_plus(str(text))
+    return open_website_visible(f"https://translate.google.com/?sl=auto&tl={target}&text={q}&op=translate", browser=browser)
+
+
+def open_wikipedia_visible(query: str = "", browser: str = "chrome") -> str:
+    term = str(query or "Wikipedia").replace(" ", "_")
+    q = urllib.parse.quote_plus(term)
+    return open_website_visible(f"https://en.wikipedia.org/wiki/{q}", browser=browser)
+
+
+def open_twitter_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://twitter.com", browser=browser)
+
+
+def open_reddit_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://www.reddit.com", browser=browser)
+
+
+def open_linkedin_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://www.linkedin.com", browser=browser)
+
+
+def open_stackoverflow_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://stackoverflow.com", browser=browser)
+
+
+def open_netflix_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://www.netflix.com", browser=browser)
+
+
+def open_spotify_web_visible(browser: str = "chrome") -> str:
+    return open_website_visible("https://open.spotify.com", browser=browser)
+
+
+def open_incognito_visible(url: str = "about:blank", browser: str = "chrome") -> str:
+    return open_website_visible(url or "about:blank", browser=browser)
+
+
+def search_google_visible(query: str, browser: str = "chrome") -> str:
+    try:
+        normalized = _open_guest_browser_foreground(browser)
+        pyautogui.hotkey("ctrl", "l")
+        _human_delay()
+        pyautogui.write(str(query), interval=random.uniform(0.06, 0.11))
+        _human_delay()
+        pyautogui.press("enter")
+        _human_delay(0.5, 0.9)
+        return f"Searched in {normalized}: {query}"
+    except Exception as e:
+        return f"Search error: {e}"
+
+
+def search_youtube_visible(query: str, browser: str = "chrome") -> str:
+    q = urllib.parse.quote_plus(str(query))
+    return open_website_visible(f"https://www.youtube.com/results?search_query={q}", browser=browser)
+
+
+def click_first_video_visible() -> str:
+    try:
+        _human_delay(0.6, 1.0)
+        for _ in range(6):
+            pyautogui.press("tab")
+            _human_delay(0.08, 0.15)
+        pyautogui.press("enter")
+        _human_delay(0.5, 1.0)
+        return "Triggered first video (best effort)"
+    except Exception as e:
+        return f"Click first video error: {e}"
+
 
 def app_type_and_enter(app_title: str, text: str) -> str:
     try:
@@ -276,7 +426,6 @@ def show_desktop() -> str:
 
 
 def take_desktop_screenshot(filename: str = "desktop_screenshot.png") -> str:
-    import os
     try:
         path = os.path.join(os.getcwd(), filename)
         pyautogui.screenshot(path)
