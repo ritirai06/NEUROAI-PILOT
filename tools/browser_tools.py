@@ -27,7 +27,7 @@ async def _get_page() -> Page:
     if _browser is not None:
         try:
             ctx = await _browser.new_context(
-                viewport={"width": 1280, "height": 800},
+                no_viewport=True,
                 user_agent=(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -48,10 +48,11 @@ async def _get_page() -> Page:
             "--disable-dev-shm-usage",
             "--disable-blink-features=AutomationControlled",
             "--start-maximized",
+            "--force-device-scale-factor=1",
         ]
     )
     ctx = await _browser.new_context(
-        viewport={"width": 1280, "height": 800},
+        no_viewport=True,
         user_agent=(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -59,6 +60,7 @@ async def _get_page() -> Page:
         )
     )
     _page = await ctx.new_page()
+    await _page.bring_to_front()
     return _page
 
 
@@ -80,6 +82,7 @@ async def open_website(url: str) -> str:
     if not url.startswith("http"):
         url = "https://" + url
     page = await _get_page()
+    await page.bring_to_front()
     try:
         await _goto(page, url)
     except Exception as e:
@@ -154,6 +157,7 @@ async def search_youtube(query: str) -> str:
     global _page
     url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
     page = await _get_page()
+    await page.bring_to_front()
     try:
         await _goto(page, url)
     except Exception as e:
@@ -194,6 +198,7 @@ async def click_first_video() -> str:
 async def search_google(query: str) -> str:
     global _page
     page = await _get_page()
+    await page.bring_to_front()
     url = f"https://www.google.com/search?q={urllib.parse.quote_plus(query)}&hl=en"
     try:
         await _goto(page, url)

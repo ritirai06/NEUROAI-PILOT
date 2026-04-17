@@ -3,6 +3,8 @@ Camera tools — OpenCV webcam capture.
 """
 import os
 import threading
+import subprocess
+import sys
 from datetime import datetime
 
 _cap = None
@@ -10,55 +12,84 @@ _window_thread = None
 
 
 def open_camera() -> str:
-    """Open webcam in a live preview window."""
-    global _cap, _window_thread
-    try:
-        import cv2
-    except ImportError:
-        return "❌ OpenCV not installed. Run: pip install opencv-python"
+    """Open webcam in visible window."""
+    global _window_thread
 
-    if _cap and _cap.isOpened():
-        return "⚠️ Camera already open"
+    script = '''
+import cv2
+import sys
+import time
 
-    _cap = cv2.VideoCapture(0)
-    if not _cap.isOpened():
-        _cap = None
-        return "❌ No camera found. Check webcam connection."
+try:
+    import win32gui
+    import win32con
+    HAS_WIN32 = True
+except:
+    HAS_WIN32 = False
 
-    def _show():
-        while _cap and _cap.isOpened():
-            ret, frame = _cap.read()
-            if not ret:
-                break
-            cv2.imshow("NeuroAI Camera — Press Q to close, S to snap", frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            elif key == ord('s'):
-                click_photo()
-        cv2.destroyAllWindows()
+cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print("NO_CAMERA")
+    sys.exit(1)
 
-    _window_thread = threading.Thread(target=_show, daemon=True)
+window_name = "NeuroAI Camera - Press Q to close"
+cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+
+if HAS_WIN32:
+    time.sleep(0.3)
+    hwnd = win32gui.FindWindow(None, window_name)
+    if hwnd:
+        win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
+                              win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0,
+                              win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+        win32gui.SetForegroundWindow(hwnd)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    cv2.imshow(window_name, frame)
+    k = cv2.waitKey(1) & 0xFF
+    if k == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+'''
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w")
+    tmp.write(script)
+    tmp.close()
+
+    def _run():
+        subprocess.Popen(
+            [sys.executable, tmp.name],
+            creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
+        )
+
+    _window_thread = threading.Thread(target=_run, daemon=True)
     _window_thread.start()
-    return "✅ Camera opened — press S to snap, Q to close"
+    return "✅ Camera opened — press Q to close"
 
 
 def click_photo(filename: str = None) -> str:
-    """Capture a photo from the open webcam."""
-    global _cap
+    """Capture a photo from webcam."""
     try:
         import cv2
     except ImportError:
         return "❌ OpenCV not installed"
 
-    # Open camera if not already open
-    if _cap is None or not _cap.isOpened():
-        result = open_camera()
-        if "❌" in result:
-            return result
-        import time; time.sleep(1)  # let camera warm up
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        return "❌ No camera found"
 
-    ret, frame = _cap.read()
+    import time
+    time.sleep(0.5)
+    ret, frame = cap.read()
+    cap.release()
+    
     if not ret:
         return "❌ Failed to capture frame"
 
@@ -66,9 +97,7 @@ def click_photo(filename: str = None) -> str:
         filename = f"photo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
 
     path = os.path.join(os.getcwd(), filename)
-    import cv2
     cv2.imwrite(path, frame)
-    close_camera()
     return f"📸 Photo saved: {path}"
 
 

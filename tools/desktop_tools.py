@@ -6,6 +6,7 @@ import subprocess
 import time
 import pyautogui
 import pygetwindow as gw
+from tools.window_manager import WindowManager, launch_visible
 
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.05
@@ -163,56 +164,34 @@ def new_file() -> str:
 
 def calculator_compute(expression: str) -> str:
     """
-    Instantly compute expression via Python eval AND open Windows Calculator
-    to show the result visually. Always returns the result.
+    Compute expression VISUALLY on calculator - shows every step.
+    NO instant computation - simulates real button presses.
     """
-    # Clean expression
-    expr = (expression.replace(" ", "")
-                      .replace("x", "*").replace("X", "*")
-                      .replace("\u00d7", "*").replace("\u00f7", "/"))
-    allowed = set("0123456789+-*/.%()")
-    safe = "".join(c for c in expr if c in allowed)
+    from tools.visual_calculator import visual_calculator_compute
+    return visual_calculator_compute(expression, step_delay=0.3)
 
-    # ── Step 1: Compute instantly via Python eval ──────────────────────────
-    try:
-        result = eval(safe)
-        if isinstance(result, float) and result == int(result):
-            result = int(result)
-        result_str = str(result)
-    except Exception as e:
-        return f"Invalid expression '{expression}': {e}"
 
-    # ── Step 2: Open Calculator and type it visually (best effort) ─────────
-    try:
-        subprocess.Popen("calc.exe", shell=True)
-        time.sleep(1.5)
-        focus_window("Calculator")
-        time.sleep(0.3)
-
-        key_map = {
-            "+": "+", "-": "-", "*": "*", "/": "/",
-            "0":"0","1":"1","2":"2","3":"3","4":"4",
-            "5":"5","6":"6","7":"7","8":"8","9":"9","." : ".",
-        }
-        for ch in safe:
-            if ch in key_map:
-                pyautogui.press(key_map[ch])
-                time.sleep(0.05)
-        pyautogui.press("enter")
-    except Exception:
-        pass  # UI is optional — result already computed above
-
-    return f"Calculator: {expression} = {result_str}"
+def calculator_compute_with_voice(expression: str) -> str:
+    """
+    Compute expression visually WITH voice feedback for each step.
+    """
+    from tools.visual_calculator import voice_calculator_compute
+    return voice_calculator_compute(expression, step_delay=0.3)
 
 
 # ── Notepad automation ────────────────────────────────────────────────────────
 
 def notepad_write(text: str) -> str:
     try:
-        subprocess.Popen("notepad.exe", shell=True)
+        launch_visible("notepad.exe", title_hint="Notepad", maximize=False)
         time.sleep(1.2)
-        focus_window("Notepad")
+        
+        # Find and focus notepad
+        hwnd = WindowManager.find_window_by_title("Notepad", timeout=2.0)
+        if hwnd:
+            WindowManager.bring_to_front(hwnd)
         time.sleep(0.3)
+        
         pyautogui.write(text, interval=0.03)
         return f"Notepad: typed '{text[:50]}'"
     except Exception as e:
@@ -250,7 +229,7 @@ def app_type_and_enter(app_title: str, text: str) -> str:
 
 def open_and_type(app: str, text: str) -> str:
     try:
-        subprocess.Popen(app, shell=True)
+        launch_visible(app, title_hint=app, maximize=False)
         time.sleep(1.5)
         pyautogui.write(str(text), interval=0.04)
         return f"Opened {app} and typed: {text}"

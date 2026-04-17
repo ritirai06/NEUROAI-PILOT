@@ -1,4 +1,5 @@
 import subprocess, sys, os, json, psutil, time, shutil, platform
+from tools.window_manager import WindowManager, launch_visible, focus_app
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config", "apps.json")
 
@@ -16,7 +17,7 @@ def open_app(app: str) -> str:
     key = app.lower().strip()
     if key not in apps:
         try:
-            subprocess.Popen(key, shell=True)
+            launch_visible(key, title_hint=app, maximize=True)
             return f"Launched: {app}"
         except Exception as e:
             return f"App '{app}' not found: {e}"
@@ -24,7 +25,7 @@ def open_app(app: str) -> str:
     if not cmd:
         return f"No command for {app} on {p}"
     try:
-        subprocess.Popen(cmd, shell=True)
+        launch_visible(cmd, title_hint=app, maximize=True)
         return f"Opened {app}"
     except Exception as e:
         return f"Failed to open {app}: {e}"
@@ -504,7 +505,7 @@ def get_installed_apps() -> str:
 
 def open_task_manager() -> str:
     try:
-        subprocess.Popen(["taskmgr.exe"])
+        launch_visible("taskmgr.exe", title_hint="Task Manager", maximize=False)
         return "Task Manager opened"
     except Exception as e:
         return f"Task Manager error: {e}"

@@ -12,9 +12,16 @@ pydantic-core==2.41.5
 # Browser automation
 playwright==1.52.0
 
+# Computer vision
+opencv-python==4.10.0.84
+
 # OS / System
 psutil==7.0.0
 pywin32==311; sys_platform == "win32"
+
+# Desktop automation
+pyautogui==0.9.54
+pygetwindow==0.0.9
 
 # Voice
 pyttsx3==2.90
@@ -28,7 +35,3 @@ python-multipart==0.0.20
 
 # Temporal workflow engine
 temporalio==1.7.1
-
-# Desktop automation
-pyautogui
-pygetwindow
